@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import AudioVisualizer from '@/components/AudioVisualizer'
 import Navbar from '@/components/Navbar'
 import { Echo } from '@/types/echo'
-import { getEchoById, recordListen } from '@/lib/echoes'
+import { getEchoById, recordListen, reEcho as reEchoDb } from '@/lib/echoes'
 import { useAuth } from '@/contexts/AuthContext'
+import Toast from '@/components/Toast'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -25,6 +26,8 @@ export default function EchoDetailPage({ params }: PageProps) {
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(1)
   const [hasRecordedListen, setHasRecordedListen] = useState(false)
+  const [hasReEchoed, setHasReEchoed] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   // Load echo data from database
   useEffect(() => {
@@ -130,6 +133,31 @@ export default function EchoDetailPage({ params }: PageProps) {
   const skipBackward = () => {
     if (audioRef.current) {
       audioRef.current.currentTime = Math.max(audioRef.current.currentTime - 10, 0)
+    }
+  }
+
+  const handleReEcho = async () => {
+    if (!user) {
+      setToast({ message: 'You must be logged in to re-echo', type: 'error' })
+      return
+    }
+
+    if (hasReEchoed) {
+      setToast({ message: 'You already re-echoed this', type: 'error' })
+      return
+    }
+
+    const success = await reEchoDb(user.id, echo!.id)
+
+    if (success) {
+      setHasReEchoed(true)
+      setToast({ message: 'Echo re-echoed successfully!', type: 'success' })
+      // Update the re-echo count locally
+      if (echo) {
+        setEcho({ ...echo, reEchoCount: echo.reEchoCount + 1 })
+      }
+    } else {
+      setToast({ message: 'Failed to re-echo', type: 'error' })
     }
   }
 
@@ -390,9 +418,50 @@ export default function EchoDetailPage({ params }: PageProps) {
           )}
         </div>
 
+        {/* Re-echo Button */}
+        <button
+          onClick={handleReEcho}
+          disabled={hasReEchoed}
+          className={`w-full py-4 rounded-lg font-semibold text-white transition-colors ${
+            hasReEchoed
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700'
+          }`}
+        >
+          {hasReEchoed ? (
+            <span className="flex items-center justify-center gap-2">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              Re-echoed
+            </span>
+          ) : (
+            <span className="flex items-center justify-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              Re-echo
+            </span>
+          )}
+        </button>
+
         {/* Hidden audio element */}
         <audio ref={audioRef} src={echo.audioUrl} preload="metadata" />
       </main>
+
+      {/* Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
 
       <Navbar />
     </div>
