@@ -24,9 +24,7 @@ export default function CreateEchoPage() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [recordingTitle, setRecordingTitle] = useState('Your Recording');
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [tempTitle, setTempTitle] = useState(recordingTitle);
+  const [recordingTitle] = useState('Untitled Echo');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
 
@@ -291,25 +289,6 @@ export default function CreateEchoPage() {
     setToast({ message: 'Recording deleted', type: 'error' });
   };
 
-  const handleEditTitle = () => {
-    setTempTitle(recordingTitle);
-    setIsEditingTitle(true);
-  };
-
-  const handleSaveTitle = () => {
-    if (tempTitle.trim() === '') {
-      setToast({ message: 'Title cannot be empty', type: 'error' });
-      return;
-    }
-    setRecordingTitle(tempTitle);
-    setIsEditingTitle(false);
-    setToast({ message: 'Title updated!', type: 'success' });
-  };
-
-  const handleCancelEdit = () => {
-    setTempTitle(recordingTitle);
-    setIsEditingTitle(false);
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -372,66 +351,7 @@ export default function CreateEchoPage() {
           <div className="w-full space-y-6">
             {/* Playback Controls */}
             <div className="bg-white rounded-lg p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                {!isEditingTitle ? (
-                  <>
-                    <h3 className="text-lg font-semibold text-gray-900">{recordingTitle}</h3>
-                    <button
-                      onClick={handleEditTitle}
-                      className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-                      aria-label="Edit title"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                        />
-                      </svg>
-                    </button>
-                  </>
-                ) : (
-                  <div className="flex-1 flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={tempTitle}
-                      onChange={(e) => setTempTitle(e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
-                      placeholder="Enter title"
-                      autoFocus
-                    />
-                    <button
-                      onClick={handleSaveTitle}
-                      className="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors"
-                      aria-label="Save title"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={handleCancelEdit}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors"
-                      aria-label="Cancel edit"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                )}
-              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">{recordingTitle}</h3>
 
               {/* Progress Bar */}
               <div className="mb-4 space-y-2">

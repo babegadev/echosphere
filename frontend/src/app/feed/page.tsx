@@ -14,21 +14,65 @@ export default function FeedPage() {
   const { user } = useAuth()
   const [echos, setEchos] = useState<Echo[]>([])
   const [loading, setLoading] = useState(true)
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [activeConfirmationId, setActiveConfirmationId] = useState<string | null>(null)
   const [toast, setToast] = useState<{
     message: string
     type: 'success' | 'error'
   } | null>(null)
 
-  // Load echoes from database on mount
+  // Get user's location on mount
   useEffect(() => {
-    loadEchoes()
+    getUserLocation()
   }, [])
+
+  // Load echoes when location is available
+  useEffect(() => {
+    if (userLocation !== null) {
+      loadEchoes()
+    }
+  }, [userLocation])
+
+  const getUserLocation = () => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          }
+          setUserLocation(location)
+          console.log('📍 User location for feed:', location)
+        },
+        (error) => {
+          console.error('Error getting location:', error)
+          // Use default location (0, 0) if user denies
+          setUserLocation({ lat: 0, lng: 0 })
+          setToast({
+            message: 'Location access denied. Showing all echoes.',
+            type: 'error'
+          })
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 60000, // Cache for 1 minute
+        }
+      )
+    } else {
+      console.error('Geolocation not supported')
+      setUserLocation({ lat: 0, lng: 0 })
+    }
+  }
 
   const loadEchoes = async () => {
     setLoading(true)
     try {
-      const fetchedEchoes = await getNearbyEchoes(50)
+      // Pass user location to get nearby echoes
+      const fetchedEchoes = await getNearbyEchoes(userLocation || undefined)
+      console.log('🔍 DEBUG: Fetched echoes from database:', fetchedEchoes)
+      console.log('🔍 DEBUG: Number of echoes:', fetchedEchoes.length)
+      console.log('🔍 DEBUG: First echo:', fetchedEchoes[0])
       setEchos(fetchedEchoes)
     } catch (error) {
       console.error('Error loading echoes:', error)
@@ -40,7 +84,11 @@ export default function FeedPage() {
 
   // Combine new echos with existing echos
   const allEchos = useMemo(() => {
-    return [...newEchos, ...echos]
+    const combined = [...newEchos, ...echos]
+    console.log('🔍 DEBUG: All echoes to render:', combined)
+    console.log('🔍 DEBUG: Total echoes count:', combined.length)
+    console.log('🔍 DEBUG: Echo IDs:', combined.map(e => e.id))
+    return combined
   }, [newEchos, echos])
 
   const handleReEchoClick = (echoId: string) => {
@@ -106,8 +154,15 @@ export default function FeedPage() {
           </div>
         </header>
 
+        {/* Re-echo Limit Notice */}
+        <div className="max-w-md mx-auto px-4 py-3 bg-white border-b border-gray-200">
+          <p className="text-sm text-gray-600 text-center">
+            You only have 5 🔁 left this month!
+          </p>
+        </div>
+
         {/* Echo List */}
-        <main className="max-w-md mx-auto">
+        <main className="max-w-md mx-auto bg-white">
           {allEchos.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 px-4">
               <svg
@@ -129,16 +184,16 @@ export default function FeedPage() {
               </p>
             </div>
           ) : (
-            allEchos.map((echo, index) => (
+            allEchos.map((echo) => (
               <EchoCard
                 key={echo.id}
                 echo={echo}
                 onReEcho={handleReEcho}
                 onReEchoClick={handleReEchoClick}
                 disabled={false}
-                isConfirmationActive={activeConfirmationId === echo.id}
-                hasActiveConfirmation={activeConfirmationId !== null}
-                isNewlyUploaded={index < newEchos.length}
+                isConfirmationActive={false}
+                hasActiveConfirmation={false}
+                isNewlyUploaded={false}
               />
             ))
           )}

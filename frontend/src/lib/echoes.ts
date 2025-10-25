@@ -1,5 +1,17 @@
 import { createClient } from './supabase'
 import { Echo } from '@/types/echo'
+import APP_CONFIG from '@/config/app.config'
+
+// Helper function to format distance from meters
+function formatDistance(meters: number | null | undefined): number {
+  if (meters == null) return 0
+
+  // Convert meters to feet (1 meter = 3.28084 feet)
+  const feet = meters * 3.28084
+
+  // Round to nearest whole number
+  return Math.round(feet)
+}
 
 interface DBEcho {
   id: string
@@ -13,6 +25,7 @@ interface DBEcho {
   listen_count: number
   re_echo_count: number
   is_active: boolean
+  distance_meters?: number // Distance in meters from user location
   profiles: {
     username: string
     display_name: string | null
@@ -46,28 +59,33 @@ export async function getEchoById(echoId: string): Promise<Echo | null> {
   return mapDBEchoToEcho(data as any)
 }
 
-// Get nearby echoes based on user location (for now, just get all)
-export async function getNearbyEchoes(limit: number = 50): Promise<Echo[]> {
+// Get nearby echoes based on user location
+export async function getNearbyEchoes(
+  userLocation?: { lat: number; lng: number },
+  radiusMeters: number = APP_CONFIG.NEARBY_ECHOES_RADIUS_METERS,
+  limit: number = APP_CONFIG.MAX_ECHOES_PER_LOAD
+): Promise<Echo[]> {
   const supabase = createClient()
 
-  const { data, error } = await supabase
-    .from('echoes')
-    .select(`
-      *,
-      profiles:user_id (
-        username,
-        display_name,
-        avatar_url
-      )
-    `)
-    .eq('is_active', true)
-    .order('created_at', { ascending: false })
-    .limit(limit)
+  // Use user's location or default location
+  const lat = userLocation?.lat ?? APP_CONFIG.DEFAULT_LOCATION.lat
+  const lng = userLocation?.lng ?? APP_CONFIG.DEFAULT_LOCATION.lng
+
+  console.log('📍 Fetching echoes near:', { lat, lng }, 'radius:', radiusMeters, 'meters')
+
+  // Call the Supabase RPC function to get nearby echoes
+  const { data, error } = await supabase.rpc('get_nearby_echoes', {
+    radius_meters: radiusMeters,
+    user_lat: lat,
+    user_lng: lng,
+  })
 
   if (error) {
-    console.error('Error fetching echoes:', error)
+    console.error('Error fetching nearby echoes:', error)
     return []
   }
+
+  console.log('✅ Found', data?.length || 0, 'nearby echoes')
 
   return mapDBEchoesToEchoes(data as any[])
 }
@@ -323,11 +341,11 @@ function mapDBEchoToEcho(dbEcho: any): Echo {
     title: dbEcho.caption || 'Untitled Echo',
     username: profile?.username || 'unknown',
     avatarColor: colors[colorIndex],
-    distance: 0, // TODO: Calculate actual distance based on user location
+    distance: formatDistance(dbEcho.distance),
     reEchoCount: dbEcho.re_echo_count || 0,
     seenCount: dbEcho.listen_count || 0,
     audioUrl: dbEcho.audio_url,
-    transcript: '', // TODO: Add transcript field to database
+    transcript: dbEcho.transcript || '',
     hasReEchoed: false, // TODO: Check if current user has re-echoed
     createdAt: dbEcho.created_at,
   }

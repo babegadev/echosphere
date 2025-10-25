@@ -3,6 +3,20 @@
 import Link from 'next/link';
 import { Echo } from '@/types/echo';
 
+// Helper function to format distance for display
+function formatDistanceDisplay(feet: number): string {
+  if (feet === 0) return 'Unknown distance';
+
+  // If distance is more than 1000 feet, show in miles
+  if (feet >= 1000) {
+    const miles = (feet / 5280).toFixed(1);
+    return `${miles} mi away`;
+  }
+
+  // Otherwise show in feet
+  return `${feet.toLocaleString()} ft away`;
+}
+
 interface EchoCardProps {
   echo: Echo;
   onReEcho: (echoId: string, confirm: boolean) => void;
@@ -22,43 +36,21 @@ export default function EchoCard({
   hasActiveConfirmation,
   isNewlyUploaded = false
 }: EchoCardProps) {
-  const handleReEchoClick = () => {
-    if (!echo.hasReEchoed && !disabled && !hasActiveConfirmation) {
-      onReEchoClick(echo.id);
-    }
-  };
-
-  const handleConfirm = () => {
-    onReEcho(echo.id, true);
-  };
-
-  const handleCancel = () => {
-    onReEcho(echo.id, false);
-  };
-
   return (
-    <div className={`bg-white border-b border-gray-200 p-4 hover:bg-gray-50 transition-colors ${isNewlyUploaded ? 'border-l-4 border-l-blue-500 bg-blue-50' : ''}`}>
-      {isNewlyUploaded && (
-        <div className="mb-2">
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-600">
-            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            Just uploaded
-          </span>
-        </div>
-      )}
-      <div className="flex gap-3">
-        {/* Avatar Circle */}
-        <div
-          className="w-12 h-12 rounded-full flex-shrink-0"
-          style={{ backgroundColor: echo.avatarColor || '#D1D5DB' }}
-        />
+    <Link href={`/echo/${echo.id}`}>
+      <div className="bg-white border-b border-gray-200 px-4 py-3 hover:bg-gray-50 transition-colors">
+        <div className="flex gap-3 items-start">
+          {/* Avatar Circle */}
+          <div
+            className="w-12 h-12 rounded-full flex-shrink-0"
+            style={{ backgroundColor: echo.avatarColor || '#D1D5DB' }}
+          />
 
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <Link href={`/echo/${echo.id}`} className="block">
-            <h3 className="text-lg font-bold text-gray-900 mb-0.5">{echo.title}</h3>
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-semibold text-gray-900 mb-0.5 line-clamp-1">
+              {echo.title}
+            </h3>
             <p className="text-sm text-gray-500 mb-2">@{echo.username}</p>
 
             <div className="flex items-center gap-3 text-sm text-gray-600">
@@ -78,13 +70,18 @@ export default function EchoCard({
                     d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                   />
                 </svg>
-                <span>{echo.distance} ft away</span>
+                <span>{formatDistanceDisplay(echo.distance)}</span>
               </div>
 
-              {/* Seen count */}
+              {/* Seen count (heart) */}
               <div className="flex items-center gap-1">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                  />
                 </svg>
                 <span>{echo.seenCount}</span>
               </div>
@@ -102,65 +99,31 @@ export default function EchoCard({
                 <span>{echo.reEchoCount}</span>
               </div>
             </div>
-          </Link>
-        </div>
+          </div>
 
-        {/* Re-echo button on the right */}
-        <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-          {!isConfirmationActive ? (
+          {/* Flag icon on the right */}
+          <div className="flex-shrink-0">
             <button
-              onClick={handleReEchoClick}
-              disabled={echo.hasReEchoed || disabled || hasActiveConfirmation}
-              className={`p-2 rounded-full transition-colors ${
-                echo.hasReEchoed || disabled || hasActiveConfirmation
-                  ? 'text-gray-400 cursor-not-allowed'
-                  : 'text-gray-600 hover:bg-gray-200'
-              }`}
-              aria-label="Re-echo"
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="Flag"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // Add flag functionality here later
+              }}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                  d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"
                 />
               </svg>
             </button>
-          ) : (
-            <div className="flex gap-1">
-              <button
-                onClick={handleConfirm}
-                className="w-8 h-8 rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors flex items-center justify-center"
-                aria-label="Confirm re-echo"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              </button>
-              <button
-                onClick={handleCancel}
-                className="w-8 h-8 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors flex items-center justify-center"
-                aria-label="Cancel re-echo"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-          )}
+          </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
