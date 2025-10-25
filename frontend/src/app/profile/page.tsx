@@ -108,8 +108,8 @@ export default function ProfilePage() {
     // TODO: Implement upload to backend
     setToast({ message: 'Echo uploaded successfully!', type: 'success' });
 
-    // Navigate to home page after a short delay
-    setTimeout(() => router.push('/'), 1500);
+    // Navigate to feed page after a short delay
+    setTimeout(() => router.push('/feed'), 1500);
 
     // Optionally, remove from archived after upload
     // const updatedEchos = archivedEchos.filter((echo) => echo.id !== echoId);

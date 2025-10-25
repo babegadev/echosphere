@@ -1,154 +1,105 @@
-'use client';
+'use client'
 
-import { useState, useMemo } from 'react';
-import EchoCard from '@/components/EchoCard';
-import Navbar from '@/components/Navbar';
-import Toast from '@/components/Toast';
-import { Echo } from '@/types/echo';
-import { useEcho } from '@/contexts/EchoContext';
+import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
+import { Button } from '@/components/ui/button'
 
-// Mock data for demonstration
-const mockEchos: Echo[] = [
-  {
-    id: '1',
-    title: 'The Future of AI in Healthcare',
-    username: 'aubreyasta_',
-    avatarColor: '#C0C0C0',
-    distance: 12,
-    reEchoCount: 8,
-    seenCount: 12,
-    audioUrl: '/audio/sample1.mp3',
-    transcript: 'This is a transcript of the echo about AI in healthcare...',
-    hasReEchoed: false,
-    createdAt: '2025-10-25T12:00:00Z',
-  },
-  {
-    id: '2',
-    title: 'Coffee Shop Reviews Downtown',
-    username: 'jadon_rybak',
-    avatarColor: '#FFB6C1',
-    distance: 7,
-    reEchoCount: 359,
-    seenCount: 450,
-    audioUrl: '/audio/sample2.mp3',
-    transcript: 'Here are my thoughts on the best coffee shops downtown...',
-    hasReEchoed: false,
-    createdAt: '2025-10-25T11:00:00Z',
-  },
-  {
-    id: '3',
-    title: 'Morning Meditation Tips',
-    username: 'amel',
-    avatarColor: '#FFD700',
-    distance: 19,
-    reEchoCount: 116,
-    seenCount: 890,
-    audioUrl: '/audio/sample3.mp3',
-    transcript: 'Let me share some meditation techniques that work for me...',
-    hasReEchoed: false,
-    createdAt: '2025-10-25T10:00:00Z',
-  },
-  {
-    id: '4',
-    title: 'Local Music Scene Update',
-    username: 'indy_mindy',
-    avatarColor: '#87CEEB',
-    distance: 31,
-    reEchoCount: 133,
-    seenCount: 320,
-    audioUrl: '/audio/sample4.mp3',
-    transcript: 'The local music scene has been amazing lately...',
-    hasReEchoed: false,
-    createdAt: '2025-10-25T09:00:00Z',
-  },
-  {
-    id: '5',
-    title: 'Best Hiking Trails Nearby',
-    username: 'dimi',
-    avatarColor: '#98FB98',
-    distance: 43,
-    reEchoCount: 68,
-    seenCount: 180,
-    audioUrl: '/audio/sample5.mp3',
-    transcript: 'I want to share the best hiking trails in our area...',
-    hasReEchoed: false,
-    createdAt: '2025-10-25T08:00:00Z',
-  },
-];
+export default function LandingPage() {
+  const { user, loading } = useAuth()
+  const router = useRouter()
 
-export default function Home() {
-  const { newEchos } = useEcho();
-  const [echos, setEchos] = useState<Echo[]>(mockEchos);
-  const [activeConfirmationId, setActiveConfirmationId] = useState<string | null>(null);
-  const [toast, setToast] = useState<{
-    message: string;
-    type: 'success' | 'error';
-  } | null>(null);
-
-  // Combine new echos with existing echos
-  const allEchos = useMemo(() => {
-    return [...newEchos, ...echos];
-  }, [newEchos, echos]);
-
-  const handleReEchoClick = (echoId: string) => {
-    setActiveConfirmationId(echoId);
-  };
-
-  const handleReEcho = (echoId: string, confirm: boolean) => {
-    if (confirm) {
-      // Update the echo to mark it as re-echoed
-      setEchos((prevEchos) =>
-        prevEchos.map((echo) =>
-          echo.id === echoId
-            ? { ...echo, hasReEchoed: true, reEchoCount: echo.reEchoCount + 1 }
-            : echo
-        )
-      );
-      setToast({ message: 'Echo re-echoed successfully!', type: 'success' });
-    } else {
-      setToast({ message: 'Re-echo cancelled', type: 'error' });
+  // Redirect to feed if already logged in
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/feed')
     }
-    setActiveConfirmationId(null);
-  };
+  }, [user, loading, router])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <>
-      <div className="min-h-screen bg-gray-50 pb-20">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-          <div className="max-w-md mx-auto px-4 py-4">
-            <h1 className="text-2xl font-bold text-gray-900">Echo</h1>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="container mx-auto px-4 py-16">
+        <div className="max-w-4xl mx-auto text-center">
+          {/* Hero Section */}
+          <div className="mb-16">
+            <h1 className="text-6xl md:text-7xl font-bold text-gray-900 mb-6">
+              Echosphere
+            </h1>
+            <p className="text-xl md:text-2xl text-gray-600 mb-8">
+              Share your voice with the world
+            </p>
+            <p className="text-lg text-gray-500 mb-12 max-w-2xl mx-auto">
+              Discover audio content from people around you. Create, share, and explore voice recordings in your local area.
+            </p>
+
+            {/* CTA Button */}
+            <div className="flex justify-center">
+              <Link href="/auth">
+                <Button size="lg" className="w-full sm:w-auto text-lg px-8 py-6">
+                  Get Started
+                </Button>
+              </Link>
+            </div>
           </div>
-        </header>
 
-        {/* Echo List */}
-        <main className="max-w-md mx-auto">
-          {allEchos.map((echo, index) => (
-            <EchoCard
-              key={echo.id}
-              echo={echo}
-              onReEcho={handleReEcho}
-              onReEchoClick={handleReEchoClick}
-              disabled={false}
-              isConfirmationActive={activeConfirmationId === echo.id}
-              hasActiveConfirmation={activeConfirmationId !== null}
-              isNewlyUploaded={index < newEchos.length}
-            />
-          ))}
-        </main>
+          {/* Features Section */}
+          <div className="grid md:grid-cols-3 gap-8 mt-20">
+            <div className="bg-white p-8 rounded-2xl shadow-lg">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Record Your Voice</h3>
+              <p className="text-gray-600">
+                Create audio echoes and share your thoughts, stories, and experiences with the community.
+              </p>
+            </div>
 
-        {/* Navbar */}
-        <Navbar />
+            <div className="bg-white p-8 rounded-2xl shadow-lg">
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Location-Based</h3>
+              <p className="text-gray-600">
+                Discover echoes from people nearby and connect with your local community.
+              </p>
+            </div>
 
-        {/* Toast */}
-        {toast && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onClose={() => setToast(null)}
-          />
-        )}
+            <div className="bg-white p-8 rounded-2xl shadow-lg">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Re-Echo & Share</h3>
+              <p className="text-gray-600">
+                Amplify voices that matter by re-echoing content you love and spreading the word.
+              </p>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="mt-20 text-gray-500 text-sm">
+            <p>&copy; 2025 Echosphere. Share your voice, discover your community.</p>
+          </div>
+        </div>
       </div>
-    </>
-  );
+    </div>
+  )
 }

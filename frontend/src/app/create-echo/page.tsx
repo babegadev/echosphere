@@ -8,6 +8,8 @@ import { useRouter } from 'next/navigation';
 import { useEcho } from '@/contexts/EchoContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Echo } from '@/types/echo';
+import { uploadEchoAudio, createEcho } from '@/lib/echoes';
+import { createArchivedEcho, uploadAudioFile } from '@/lib/archived-echoes';
 
 type RecordingState = 'idle' | 'recording' | 'stopped';
 
@@ -103,51 +105,108 @@ export default function CreateEchoPage() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const handleUpload = () => {
-    // Create a new echo object to add to the feed
-    const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'anonymous';
-    const newEcho: Echo = {
-      id: `new-${Date.now()}`,
-      title: recordingTitle,
-      username: username,
-      avatarColor: '#3B82F6', // Blue color for newly uploaded echos
-      distance: 0, // Just uploaded, so distance is 0
-      reEchoCount: 0,
-      seenCount: 0,
-      audioUrl: audioUrl || '',
-      transcript: '', // TODO: Add transcript generation
-      hasReEchoed: false,
-      createdAt: new Date().toISOString(),
-    };
+  const handleUpload = async () => {
+    if (!user) {
+      setToast({ message: 'You must be logged in to upload', type: 'error' });
+      return;
+    }
 
-    // Add to feed immediately
-    addNewEcho(newEcho);
+    if (!audioUrl) {
+      setToast({ message: 'No audio to upload', type: 'error' });
+      return;
+    }
 
-    // Save to localStorage for uploaded echos
-    const uploaded = localStorage.getItem('uploadedEchos');
-    const uploadedEchos = uploaded ? JSON.parse(uploaded) : [];
-    uploadedEchos.unshift(newEcho); // Add to beginning
-    localStorage.setItem('uploadedEchos', JSON.stringify(uploadedEchos));
+    setToast({ message: 'Uploading echo...', type: 'success' });
 
-    // TODO: Implement upload to backend
-    setToast({ message: 'Echo uploaded successfully!', type: 'success' });
-    setTimeout(() => router.push('/'), 1500);
+    try {
+      // Convert the blob URL back to a blob
+      const response = await fetch(audioUrl);
+      const audioBlob = await response.blob();
+
+      // Upload audio file to Supabase storage
+      const uploadedAudioUrl = await uploadEchoAudio(audioBlob, user.id);
+
+      if (!uploadedAudioUrl) {
+        setToast({ message: 'Failed to upload audio', type: 'error' });
+        return;
+      }
+
+      // Calculate duration
+      const audioDuration = Math.floor(duration);
+
+      // Create echo in database
+      const newEcho = await createEcho(
+        user.id,
+        uploadedAudioUrl,
+        audioDuration,
+        recordingTitle
+      );
+
+      if (!newEcho) {
+        setToast({ message: 'Failed to create echo', type: 'error' });
+        return;
+      }
+
+      // No need to add to context - it's already in the database
+      // The feed page will fetch it automatically when you navigate there
+
+      setToast({ message: 'Echo uploaded successfully!', type: 'success' });
+      setTimeout(() => router.push('/feed'), 1500);
+    } catch (error) {
+      console.error('Error uploading echo:', error);
+      setToast({ message: 'Failed to upload echo', type: 'error' });
+    }
   };
 
-  const handleArchive = () => {
-    // Save to localStorage for now (will be replaced with backend later)
-    const archived = localStorage.getItem('archivedEchos');
-    const archivedEchos = archived ? JSON.parse(archived) : [];
-    archivedEchos.push({
-      id: Date.now().toString(),
-      url: audioUrl,
-      createdAt: new Date().toISOString(),
-      title: recordingTitle,
-    });
-    localStorage.setItem('archivedEchos', JSON.stringify(archivedEchos));
+  const handleArchive = async () => {
+    if (!user) {
+      setToast({ message: 'You must be logged in to archive', type: 'error' });
+      return;
+    }
 
-    setToast({ message: 'Echo archived successfully!', type: 'success' });
-    setTimeout(() => router.push('/profile'), 1500);
+    if (!audioUrl) {
+      setToast({ message: 'No audio to archive', type: 'error' });
+      return;
+    }
+
+    setToast({ message: 'Archiving echo...', type: 'success' });
+
+    try {
+      // Convert the blob URL back to a blob
+      const response = await fetch(audioUrl);
+      const audioBlob = await response.blob();
+
+      // Upload audio file to Supabase storage
+      const uploadedAudioUrl = await uploadAudioFile(audioBlob, user.id, 'archived-recording.webm');
+
+      if (!uploadedAudioUrl) {
+        setToast({ message: 'Failed to upload audio', type: 'error' });
+        return;
+      }
+
+      // Calculate duration
+      const audioDuration = Math.floor(duration);
+
+      // Create archived echo in database
+      const archivedEcho = await createArchivedEcho(
+        user.id,
+        uploadedAudioUrl,
+        recordingTitle,
+        audioDuration,
+        'manual'
+      );
+
+      if (!archivedEcho) {
+        setToast({ message: 'Failed to archive echo', type: 'error' });
+        return;
+      }
+
+      setToast({ message: 'Echo archived successfully!', type: 'success' });
+      setTimeout(() => router.push('/profile/archived'), 1500);
+    } catch (error) {
+      console.error('Error archiving echo:', error);
+      setToast({ message: 'Failed to archive echo', type: 'error' });
+    }
   };
 
   const handleDelete = () => {

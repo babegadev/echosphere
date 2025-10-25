@@ -1,0 +1,334 @@
+import { createClient } from './supabase'
+import { Echo } from '@/types/echo'
+
+interface DBEcho {
+  id: string
+  user_id: string
+  audio_url: string
+  duration: number
+  caption: string | null
+  location: any
+  location_name: string | null
+  created_at: string
+  listen_count: number
+  re_echo_count: number
+  is_active: boolean
+  profiles: {
+    username: string
+    display_name: string | null
+    avatar_url: string | null
+  }
+}
+
+// Get a single echo by ID
+export async function getEchoById(echoId: string): Promise<Echo | null> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('echoes')
+    .select(`
+      *,
+      profiles:user_id (
+        username,
+        display_name,
+        avatar_url
+      )
+    `)
+    .eq('id', echoId)
+    .eq('is_active', true)
+    .single()
+
+  if (error) {
+    console.error('Error fetching echo:', error)
+    return null
+  }
+
+  return mapDBEchoToEcho(data as any)
+}
+
+// Get nearby echoes based on user location (for now, just get all)
+export async function getNearbyEchoes(limit: number = 50): Promise<Echo[]> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('echoes')
+    .select(`
+      *,
+      profiles:user_id (
+        username,
+        display_name,
+        avatar_url
+      )
+    `)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error) {
+    console.error('Error fetching echoes:', error)
+    return []
+  }
+
+  return mapDBEchoesToEchoes(data as any[])
+}
+
+// Get echoes by a specific user
+export async function getUserEchoes(userId: string): Promise<Echo[]> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('echoes')
+    .select(`
+      *,
+      profiles:user_id (
+        username,
+        display_name,
+        avatar_url
+      )
+    `)
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching user echoes:', error)
+    return []
+  }
+
+  return mapDBEchoesToEchoes(data as any[])
+}
+
+// Create a new echo
+export async function createEcho(
+  userId: string,
+  audioUrl: string,
+  duration: number,
+  caption: string,
+  location?: { lat: number; lng: number },
+  locationName?: string
+): Promise<Echo | null> {
+  const supabase = createClient()
+
+  // Format location as POINT(lng lat) - matches Python: POINT(longitude latitude)
+  // Python: location_str = f"POINT({self.location[1]} {self.location[0]})"
+  const locationStr = location
+    ? `POINT(${location.lng} ${location.lat})`
+    : 'POINT(0 0)'
+
+  // Match Python upload format exactly:
+  // echo_data = {
+  //   "user_id": self.user_id,
+  //   "audio_url": audio_url,
+  //   "duration": duration,
+  //   "location": location_str,
+  //   "location_name": None,
+  // }
+  const echoData: any = {
+    user_id: userId,
+    audio_url: audioUrl,
+    duration: duration,
+    location: locationStr,
+    location_name: null,
+  }
+
+  console.log('Creating echo with data:', echoData)
+
+  const { data, error } = await supabase
+    .from('echoes')
+    .insert(echoData)
+    .select(`
+      *,
+      profiles:user_id (
+        username,
+        display_name,
+        avatar_url
+      )
+    `)
+    .single()
+
+  if (error) {
+    console.error('Error creating echo:', error)
+    return null
+  }
+
+  console.log('✅ Echo created successfully:', data.id)
+
+  // Trigger transcription asynchronously (don't wait for it)
+  if (data?.id) {
+    triggerTranscription(data.id, audioUrl).catch((err) =>
+      console.error('Failed to trigger transcription:', err)
+    )
+  }
+
+  return mapDBEchoToEcho(data as any)
+}
+
+// Trigger transcription for an echo (async, fire and forget)
+async function triggerTranscription(echoId: string, audioUrl: string) {
+  try {
+    await fetch('/api/transcribe', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        echoId,
+        audioUrl,
+      }),
+    })
+  } catch (error) {
+    console.error('Error triggering transcription:', error)
+  }
+}
+
+// Re-echo an existing echo
+export async function reEcho(
+  userId: string,
+  originalEchoId: string,
+  location?: { lat: number; lng: number },
+  locationName?: string
+): Promise<boolean> {
+  const supabase = createClient()
+
+  const defaultLocation = location
+    ? `POINT(${location.lng} ${location.lat})`
+    : 'POINT(0 0)'
+
+  // Insert into re_echoes table
+  const { error: reEchoError } = await supabase.from('re_echoes').insert({
+    original_echo_id: originalEchoId,
+    user_id: userId,
+    location: defaultLocation,
+    location_name: locationName,
+  })
+
+  if (reEchoError) {
+    console.error('Error creating re-echo:', reEchoError)
+    return false
+  }
+
+  // Increment the re_echo_count on the original echo
+  const { error: updateError } = await supabase.rpc('increment_re_echo_count', {
+    echo_id: originalEchoId,
+  })
+
+  if (updateError) {
+    console.error('Error incrementing re-echo count:', updateError)
+    // Still return true since the re-echo was created
+  }
+
+  return true
+}
+
+// Record a listen/view
+export async function recordListen(
+  echoId: string,
+  userId: string | null,
+  duration?: number
+): Promise<void> {
+  const supabase = createClient()
+
+  // Insert listen record
+  const { error: listenError } = await supabase.from('listens').insert({
+    echo_id: echoId,
+    user_id: userId,
+    listen_duration: duration,
+  })
+
+  if (listenError) {
+    console.error('Error recording listen:', listenError)
+  }
+
+  // Increment listen count on echo
+  const { error: updateError } = await supabase.rpc('increment_listen_count', {
+    echo_id: echoId,
+  })
+
+  if (updateError) {
+    console.error('Error incrementing listen count:', updateError)
+  }
+}
+
+// Delete an echo (soft delete - sets is_active to false)
+export async function deleteEcho(echoId: string, userId: string): Promise<boolean> {
+  const supabase = createClient()
+
+  console.log('Attempting to delete echo:', echoId, 'for user:', userId)
+
+  // Soft delete - set is_active to false instead of actually deleting
+  // Include user_id check to ensure RLS works properly
+  const { data, error } = await supabase
+    .from('echoes')
+    .update({ is_active: false })
+    .eq('id', echoId)
+    .eq('user_id', userId)
+    .select()
+
+  if (error) {
+    console.error('Error deleting echo:', error)
+    console.error('Error details:', JSON.stringify(error))
+    return false
+  }
+
+  console.log('Echo deleted successfully:', data)
+  return true
+}
+
+// Upload audio file to storage
+export async function uploadEchoAudio(
+  file: File | Blob,
+  userId: string
+): Promise<string | null> {
+  const supabase = createClient()
+
+  const fileName = `${Date.now()}.webm`
+  const filePath = `${userId}/${fileName}`
+
+  const { data, error } = await supabase.storage
+    .from('echo-audio')
+    .upload(filePath, file, {
+      contentType: file.type || 'audio/webm',
+      upsert: false,
+    })
+
+  if (error) {
+    console.error('Error uploading audio:', error)
+    return null
+  }
+
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from('echo-audio')
+    .getPublicUrl(data.path)
+
+  return urlData.publicUrl
+}
+
+// Helper function to map database echoes to Echo type
+function mapDBEchoesToEchoes(dbEchoes: any[]): Echo[] {
+  return dbEchoes.map(mapDBEchoToEcho)
+}
+
+function mapDBEchoToEcho(dbEcho: any): Echo {
+  const profile = dbEcho.profiles
+
+  // Generate a color based on username
+  const colors = ['#C0C0C0', '#FFB6C1', '#FFD700', '#87CEEB', '#98FB98', '#DDA0DD']
+  const colorIndex = profile?.username
+    ? profile.username.charCodeAt(0) % colors.length
+    : 0
+
+  return {
+    id: dbEcho.id,
+    title: dbEcho.caption || 'Untitled Echo',
+    username: profile?.username || 'unknown',
+    avatarColor: colors[colorIndex],
+    distance: 0, // TODO: Calculate actual distance based on user location
+    reEchoCount: dbEcho.re_echo_count || 0,
+    seenCount: dbEcho.listen_count || 0,
+    audioUrl: dbEcho.audio_url,
+    transcript: '', // TODO: Add transcript field to database
+    hasReEchoed: false, // TODO: Check if current user has re-echoed
+    createdAt: dbEcho.created_at,
+  }
+}

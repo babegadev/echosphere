@@ -1,48 +1,63 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import Navbar from '@/components/Navbar';
-import { useRouter } from 'next/navigation';
-import Toast from '@/components/Toast';
-import { useEcho } from '@/contexts/EchoContext';
-import { Echo } from '@/types/echo';
-
-interface ArchivedEcho {
-  id: string;
-  url: string;
-  createdAt: string;
-  title?: string;
-}
+import { useState, useEffect } from 'react'
+import Navbar from '@/components/Navbar'
+import { useRouter } from 'next/navigation'
+import Toast from '@/components/Toast'
+import { useEcho } from '@/contexts/EchoContext'
+import { useAuth } from '@/contexts/AuthContext'
+import { Echo } from '@/types/echo'
+import { ArchivedEcho } from '@/types/archived-echo'
+import { getArchivedEchoes, deleteArchivedEcho } from '@/lib/archived-echoes'
 
 export default function ArchivedEchosPage() {
-  const router = useRouter();
-  const { addNewEcho } = useEcho();
-  const [username] = useState('aubreyasta_'); // TODO: Get from auth context
-  const [archivedEchos, setArchivedEchos] = useState<ArchivedEcho[]>([]);
+  const router = useRouter()
+  const { addNewEcho } = useEcho()
+  const { user } = useAuth()
+  const [archivedEchos, setArchivedEchos] = useState<ArchivedEcho[]>([])
+  const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState<{
-    message: string;
-    type: 'success' | 'error';
-  } | null>(null);
+    message: string
+    type: 'success' | 'error'
+  } | null>(null)
+
+  const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'anonymous'
 
   useEffect(() => {
-    // Load archived echos from localStorage
-    const archived = localStorage.getItem('archivedEchos');
-    if (archived) {
-      setArchivedEchos(JSON.parse(archived));
+    if (user) {
+      loadArchivedEchoes()
     }
-  }, []);
+  }, [user])
 
-  const handleDeleteEcho = (echoId: string) => {
-    const updatedEchos = archivedEchos.filter((echo) => echo.id !== echoId);
-    setArchivedEchos(updatedEchos);
-    localStorage.setItem('archivedEchos', JSON.stringify(updatedEchos));
-    setToast({ message: 'Echo deleted successfully', type: 'success' });
-  };
+  const loadArchivedEchoes = async () => {
+    if (!user) return
+
+    setLoading(true)
+    try {
+      const echoes = await getArchivedEchoes(user.id)
+      setArchivedEchos(echoes)
+    } catch (error) {
+      console.error('Error loading archived echoes:', error)
+      setToast({ message: 'Failed to load archived echoes', type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteEcho = async (echoId: string) => {
+    const success = await deleteArchivedEcho(echoId)
+    if (success) {
+      setArchivedEchos(archivedEchos.filter((echo) => echo.id !== echoId))
+      setToast({ message: 'Echo deleted successfully', type: 'success' })
+    } else {
+      setToast({ message: 'Failed to delete echo', type: 'error' })
+    }
+  }
 
   const handleUploadEcho = (echoId: string) => {
     // Find the archived echo
-    const archivedEcho = archivedEchos.find((echo) => echo.id === echoId);
-    if (!archivedEcho) return;
+    const archivedEcho = archivedEchos.find((echo) => echo.id === echoId)
+    if (!archivedEcho) return
 
     // Create a new echo object to add to the feed
     const newEcho: Echo = {
@@ -53,24 +68,54 @@ export default function ArchivedEchosPage() {
       distance: 0,
       reEchoCount: 0,
       seenCount: 0,
-      audioUrl: archivedEcho.url,
+      audioUrl: archivedEcho.audio_url,
       transcript: '',
       hasReEchoed: false,
       createdAt: new Date().toISOString(),
-    };
+    }
 
     // Add to feed immediately
-    addNewEcho(newEcho);
+    addNewEcho(newEcho)
 
-    // Save to localStorage for uploaded echos
-    const uploaded = localStorage.getItem('uploadedEchos');
-    const uploadedEchos = uploaded ? JSON.parse(uploaded) : [];
-    uploadedEchos.unshift(newEcho); // Add to beginning
-    localStorage.setItem('uploadedEchos', JSON.stringify(uploadedEchos));
+    // Save to localStorage for uploaded echos (temporary until backend is fully integrated)
+    const uploaded = localStorage.getItem('uploadedEchos')
+    const uploadedEchos = uploaded ? JSON.parse(uploaded) : []
+    uploadedEchos.unshift(newEcho)
+    localStorage.setItem('uploadedEchos', JSON.stringify(uploadedEchos))
 
-    setToast({ message: 'Echo uploaded successfully!', type: 'success' });
-    setTimeout(() => router.push('/'), 1500);
-  };
+    setToast({ message: 'Echo uploaded successfully!', type: 'success' })
+    setTimeout(() => router.push('/feed'), 1500)
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+          <div className="max-w-md mx-auto px-4 py-4 flex items-center gap-4">
+            <button
+              onClick={() => router.back()}
+              className="text-gray-600 hover:text-gray-900"
+              aria-label="Go back"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
+            <h1 className="text-xl font-bold text-gray-900">Archived Echos</h1>
+          </div>
+        </header>
+        <div className="flex items-center justify-center py-16">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <Navbar />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -107,7 +152,7 @@ export default function ArchivedEchosPage() {
             </svg>
             <h2 className="text-lg font-semibold text-gray-900 mb-2">No Archived Echos</h2>
             <p className="text-gray-500 text-center">
-              Echos you archive will appear here
+              Echos you archive or record with your Omi device will appear here
             </p>
           </div>
         ) : (
@@ -116,15 +161,22 @@ export default function ArchivedEchosPage() {
               {archivedEchos.map((echo) => (
                 <div key={echo.id} className="px-4 py-4">
                   {/* Title */}
-                  {echo.title && (
-                    <h3 className="text-base font-semibold text-gray-900 mb-2">
-                      {echo.title}
-                    </h3>
-                  )}
+                  <div className="flex items-center justify-between mb-2">
+                    {echo.title && (
+                      <h3 className="text-base font-semibold text-gray-900 flex-1">
+                        {echo.title}
+                      </h3>
+                    )}
+                    {echo.source === 'omi' && (
+                      <span className="ml-2 px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full">
+                        Omi
+                      </span>
+                    )}
+                  </div>
 
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-gray-500">
-                      {new Date(echo.createdAt).toLocaleDateString('en-US', {
+                      {new Date(echo.created_at).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
@@ -148,7 +200,9 @@ export default function ArchivedEchosPage() {
                     </button>
                   </div>
                   <audio controls className="w-full mb-3">
-                    <source src={echo.url} type="audio/webm" />
+                    <source src={echo.audio_url} type="audio/webm" />
+                    <source src={echo.audio_url} type="audio/wav" />
+                    <source src={echo.audio_url} type="audio/mpeg" />
                     Your browser does not support the audio element.
                   </audio>
 
@@ -185,5 +239,5 @@ export default function ArchivedEchosPage() {
 
       <Navbar />
     </div>
-  );
+  )
 }

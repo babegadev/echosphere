@@ -58,7 +58,7 @@ export async function middleware(request: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession()
 
   // Protected routes that require authentication
-  const protectedRoutes = ['/create-echo', '/profile']
+  const protectedRoutes = ['/feed', '/create-echo', '/profile']
   const isProtectedRoute = protectedRoutes.some(route =>
     request.nextUrl.pathname.startsWith(route)
   )
@@ -70,9 +70,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Redirect to home if authenticated and trying to access auth page
-  if (request.nextUrl.pathname === '/auth' && session) {
-    return NextResponse.redirect(new URL('/', request.url))
+  // Redirect to feed if authenticated and trying to access auth page or landing page
+  if (session && (request.nextUrl.pathname === '/auth' || request.nextUrl.pathname === '/')) {
+    return NextResponse.redirect(new URL('/feed', request.url))
   }
 
   return response

@@ -33,7 +33,7 @@ export default function AuthPage() {
         setToast({ message: error.message, type: 'error' })
       } else {
         setToast({ message: 'Successfully logged in!', type: 'success' })
-        setTimeout(() => router.push('/'), 1000)
+        setTimeout(() => router.push('/feed'), 1000)
       }
     } catch (error) {
       setToast({ message: 'An unexpected error occurred', type: 'error' })
