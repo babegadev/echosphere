@@ -27,19 +27,69 @@ export default function CreateEchoPage() {
   const [recordingTitle, setRecordingTitle] = useState('Your Recording');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState(recordingTitle);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const recordingStartTimeRef = useRef<number>(0);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Get user's current location
+  const getUserLocation = () => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          setUserLocation(location);
+          console.log('📍 Location captured:', location);
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          // Set a default location if user denies or error occurs
+          setUserLocation(null);
+          setToast({
+            message: 'Location access denied. Echo will use default location.',
+            type: 'error'
+          });
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0,
+        }
+      );
+    } else {
+      console.error('Geolocation is not supported by this browser.');
+      setUserLocation(null);
+    }
+  };
 
   const startRecording = async () => {
     try {
+      // Get user's location when they start recording
+      getUserLocation();
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setAudioStream(stream);
 
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
+
+      // Track recording start time
+      recordingStartTimeRef.current = Date.now();
+      setRecordingDuration(0);
+
+      // Update recording duration every 100ms
+      recordingIntervalRef.current = setInterval(() => {
+        const elapsed = (Date.now() - recordingStartTimeRef.current) / 1000;
+        setRecordingDuration(elapsed);
+      }, 100);
 
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
@@ -48,12 +98,23 @@ export default function CreateEchoPage() {
       };
 
       mediaRecorder.onstop = () => {
+        // Stop the recording timer
+        if (recordingIntervalRef.current) {
+          clearInterval(recordingIntervalRef.current);
+          recordingIntervalRef.current = null;
+        }
+
+        // Calculate final recording duration
+        const finalDuration = (Date.now() - recordingStartTimeRef.current) / 1000;
+        setRecordingDuration(finalDuration);
+        setDuration(finalDuration);
+
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
-        // Reset time states
         setCurrentTime(0);
-        setDuration(0);
+
+        console.log('🎙️ Recording duration:', finalDuration, 'seconds');
       };
 
       mediaRecorder.start();
@@ -116,6 +177,12 @@ export default function CreateEchoPage() {
       return;
     }
 
+    // Check if duration is valid
+    if (duration === 0 || !isFinite(duration) || isNaN(duration)) {
+      setToast({ message: 'Invalid recording duration. Please try recording again.', type: 'error' });
+      return;
+    }
+
     setToast({ message: 'Uploading echo...', type: 'success' });
 
     try {
@@ -131,21 +198,27 @@ export default function CreateEchoPage() {
         return;
       }
 
-      // Calculate duration
+      // Use the duration we tracked during recording
       const audioDuration = Math.floor(duration);
 
-      // Create echo in database
+      console.log('📊 Echo duration:', audioDuration, 'seconds');
+
+      // Create echo in database with location
       const newEcho = await createEcho(
         user.id,
         uploadedAudioUrl,
         audioDuration,
-        recordingTitle
+        recordingTitle,
+        userLocation || undefined, // Pass location if available
+        undefined // locationName - can be added later with reverse geocoding
       );
 
       if (!newEcho) {
         setToast({ message: 'Failed to create echo', type: 'error' });
         return;
       }
+
+      console.log('✅ Echo created with location:', userLocation);
 
       // No need to add to context - it's already in the database
       // The feed page will fetch it automatically when you navigate there
