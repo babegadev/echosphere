@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import { useRouter } from 'next/navigation';
 import Toast from '@/components/Toast';
 import { useEcho } from '@/contexts/EchoContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Echo } from '@/types/echo';
 
 interface ArchivedEcho {
@@ -17,8 +18,12 @@ interface ArchivedEcho {
 export default function ProfilePage() {
   const router = useRouter();
   const { addNewEcho } = useEcho();
-  const [userId] = useState('USER-7F82A9'); // Unchangeable user ID
-  const [username, setUsername] = useState('aubreyasta_');
+  const { user } = useAuth();
+
+  const userId = user?.id || 'anonymous';
+  const initialUsername = user?.user_metadata?.username || user?.email?.split('@')[0] || 'anonymous';
+
+  const [username, setUsername] = useState(initialUsername);
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [tempUsername, setTempUsername] = useState(username);
   const [archivedEchos, setArchivedEchos] = useState<ArchivedEcho[]>([]);
@@ -26,6 +31,15 @@ export default function ProfilePage() {
     message: string;
     type: 'success' | 'error';
   } | null>(null);
+
+  useEffect(() => {
+    // Update username when user changes
+    if (user) {
+      const newUsername = user.user_metadata?.username || user.email?.split('@')[0] || 'anonymous';
+      setUsername(newUsername);
+      setTempUsername(newUsername);
+    }
+  }, [user]);
 
   useEffect(() => {
     // Load archived echos from localStorage
