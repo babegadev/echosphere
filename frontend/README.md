@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Echo - Audio Sharing Platform
+
+A Twitter-like audio sharing platform where users can share audio recordings (echos) with location-based discovery.
+
+## Features
+
+### Home Page
+- List view of echos similar to Twitter
+- Each echo card displays:
+  - Title of the echo
+  - Distance from user (e.g., "1 mi away from you")
+  - Re-echo count with icon
+  - Seen count with icon
+  - Re-echo button
+
+### Re-echo Functionality
+- Click re-echo button to confirm/cancel
+- Green checkmark to confirm
+- Red cross to cancel
+- Toast notification shows success or cancellation
+- Once re-echoed, button becomes disabled
+
+### Echo Detail Page
+- Displays when clicking on an echo
+- Shows:
+  - Echo title and stats
+  - Animated audio visualizer (moving lines when playing)
+  - Audio controls: play/pause, volume up/down, skip forward/backward
+  - Progress bar with time display
+  - Full transcript of the echo
+
+### Navigation
+- Bottom navbar with:
+  - Home button (left)
+  - Echo button (center, elevated)
+  - Profile button (right)
+
+### Design
+- Mobile-first responsive design
+- Clean, modern UI similar to Twitter
+- Smooth animations and transitions
 
 ## Getting Started
 
-First, run the development server:
-
+1. Install dependencies:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Run the development server:
+```bash
+npm run dev
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Tech Stack
 
-## Learn More
+- Next.js 16
+- React 19
+- TypeScript
+- Tailwind CSS
+- Canvas API for audio visualization
 
-To learn more about Next.js, take a look at the following resources:
+## Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+frontend/
+├── src/
+│   ├── app/
+│   │   ├── page.tsx              # Home page with echo list
+│   │   ├── echo/[id]/page.tsx    # Echo detail page
+│   │   ├── profile/page.tsx      # Profile page (placeholder)
+│   │   ├── create-echo/page.tsx  # Create echo page (placeholder)
+│   │   ├── layout.tsx            # Root layout
+│   │   └── globals.css           # Global styles
+│   ├── components/
+│   │   ├── EchoCard.tsx          # Echo list item component
+│   │   ├── Navbar.tsx            # Bottom navigation
+│   │   ├── Toast.tsx             # Toast notifications
+│   │   └── AudioVisualizer.tsx   # Audio waveform animation
+│   └── types/
+│       └── echo.ts               # TypeScript interfaces
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Next Steps
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Implement audio recording functionality
+- Connect to backend API
+- Add user authentication
+- Implement actual location-based filtering
+- Add audio file upload
+- Add real-time updates
