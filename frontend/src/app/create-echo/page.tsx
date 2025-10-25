@@ -6,6 +6,7 @@ import VoiceVisualizer from '@/components/VoiceVisualizer';
 import Toast from '@/components/Toast';
 import { useRouter } from 'next/navigation';
 import { useEcho } from '@/contexts/EchoContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Echo } from '@/types/echo';
 
 type RecordingState = 'idle' | 'recording' | 'stopped';
@@ -13,6 +14,7 @@ type RecordingState = 'idle' | 'recording' | 'stopped';
 export default function CreateEchoPage() {
   const router = useRouter();
   const { addNewEcho } = useEcho();
+  const { user } = useAuth();
   const [recordingState, setRecordingState] = useState<RecordingState>('idle');
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -103,10 +105,11 @@ export default function CreateEchoPage() {
 
   const handleUpload = () => {
     // Create a new echo object to add to the feed
+    const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'anonymous';
     const newEcho: Echo = {
       id: `new-${Date.now()}`,
       title: recordingTitle,
-      username: 'aubreyasta_', // TODO: Get from user context/auth
+      username: username,
       avatarColor: '#3B82F6', // Blue color for newly uploaded echos
       distance: 0, // Just uploaded, so distance is 0
       reEchoCount: 0,
