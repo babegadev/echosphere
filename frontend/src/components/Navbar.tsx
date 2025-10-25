@@ -1,28 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState } from 'react';
 
 export default function Navbar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user, signOut } = useAuth();
-  const [showMenu, setShowMenu] = useState(false);
-
-  const handleSignOut = async () => {
-    await signOut();
-    router.push('/auth');
-  };
+  const { user } = useAuth();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
       <div className="max-w-md mx-auto px-6 py-3 flex items-end justify-center gap-28 relative">
-        {/* Home Button */}
+        {/* Home/Feed Button */}
         <Link
-          href="/"
-          className={`flex flex-col items-center gap-1 ${pathname === '/' ? 'text-blue-600' : 'text-gray-600'}`}
+          href="/feed"
+          className={`flex flex-col items-center gap-1 ${pathname === '/feed' ? 'text-blue-600' : 'text-gray-600'}`}
         >
           <svg
             className="w-6 h-6"
@@ -62,51 +54,25 @@ export default function Navbar() {
 
         {/* Profile/Auth Button */}
         {user ? (
-          <div className="relative">
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className={`flex flex-col items-center gap-1 ${pathname === '/profile' ? 'text-blue-600' : 'text-gray-600'}`}
+          <Link
+            href="/profile"
+            className={`flex flex-col items-center gap-1 ${pathname === '/profile' || pathname.startsWith('/profile/') ? 'text-blue-600' : 'text-gray-600'}`}
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                />
-              </svg>
-              <span className="text-xs">Profile</span>
-            </button>
-
-            {showMenu && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setShowMenu(false)}
-                />
-                <div className="absolute bottom-full right-0 mb-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                  <Link
-                    href="/profile"
-                    onClick={() => setShowMenu(false)}
-                    className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
-                  >
-                    View Profile
-                  </Link>
-                  <button
-                    onClick={handleSignOut}
-                    className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
-                  >
-                    Sign Out
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              />
+            </svg>
+            <span className="text-xs">Profile</span>
+          </Link>
         ) : (
           <Link
             href="/auth"

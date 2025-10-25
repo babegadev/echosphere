@@ -5,29 +5,92 @@ import Navbar from '@/components/Navbar';
 import { useRouter } from 'next/navigation';
 import Toast from '@/components/Toast';
 import { Echo } from '@/types/echo';
+import { useAuth } from '@/contexts/AuthContext';
+import { getUserEchoes } from '@/lib/echoes';
 
 export default function UploadedEchosPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [uploadedEchos, setUploadedEchos] = useState<Echo[]>([]);
+  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{
     message: string;
     type: 'success' | 'error';
   } | null>(null);
 
   useEffect(() => {
-    // Load uploaded echos from localStorage
-    const uploaded = localStorage.getItem('uploadedEchos');
-    if (uploaded) {
-      setUploadedEchos(JSON.parse(uploaded));
-    }
-  }, []);
+    // Load uploaded echos from database
+    const loadUploadedEchos = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-  const handleDeleteEcho = (echoId: string) => {
-    const updatedEchos = uploadedEchos.filter((echo) => echo.id !== echoId);
-    setUploadedEchos(updatedEchos);
-    localStorage.setItem('uploadedEchos', JSON.stringify(updatedEchos));
-    setToast({ message: 'Echo deleted successfully', type: 'success' });
+      try {
+        const echos = await getUserEchoes(user.id);
+        setUploadedEchos(echos);
+      } catch (error) {
+        console.error('Error loading uploaded echos:', error);
+        setToast({ message: 'Failed to load echoes', type: 'error' });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUploadedEchos();
+  }, [user]);
+
+  const handleDeleteEcho = async (echoId: string) => {
+    if (!user) {
+      setToast({ message: 'You must be logged in to delete', type: 'error' });
+      return;
+    }
+
+    const { deleteEcho } = await import('@/lib/echoes');
+
+    const success = await deleteEcho(echoId, user.id);
+
+    if (success) {
+      const updatedEchos = uploadedEchos.filter((echo) => echo.id !== echoId);
+      setUploadedEchos(updatedEchos);
+      setToast({ message: 'Echo deleted successfully', type: 'success' });
+    } else {
+      setToast({ message: 'Failed to delete echo', type: 'error' });
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+          <div className="max-w-md mx-auto px-4 py-4 flex items-center gap-4">
+            <button
+              onClick={() => router.back()}
+              className="text-gray-600 hover:text-gray-900"
+              aria-label="Go back"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
+            <h1 className="text-xl font-bold text-gray-900">Uploaded Echos</h1>
+          </div>
+        </header>
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading your echoes...</p>
+          </div>
+        </div>
+        <Navbar />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
