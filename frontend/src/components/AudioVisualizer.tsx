@@ -8,7 +8,7 @@ interface AudioVisualizerProps {
 
 export default function AudioVisualizer({ isPlaying }: AudioVisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (!isPlaying) {
