@@ -4,19 +4,34 @@ import { useState, useRef, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import AudioVisualizer from '@/components/AudioVisualizer';
 import Navbar from '@/components/Navbar';
+import { Echo } from '@/types/echo';
+import { useEcho } from '@/contexts/EchoContext';
 
 // Mock data - in real app, fetch based on ID
-const mockEcho = {
-  id: '1',
-  title: 'The Future of AI in Healthcare',
-  distance: 0.7,
-  reEchoCount: 359,
-  seenCount: 1250,
-  audioUrl: '/audio/sample1.mp3',
-  transcript:
-    'This is a transcript of the echo about AI in healthcare. In this recording, I discuss how artificial intelligence is transforming the healthcare industry, from diagnosis to treatment planning. The integration of machine learning algorithms has enabled doctors to detect diseases earlier and with greater accuracy. We are seeing remarkable improvements in imaging analysis, personalized medicine, and patient care coordination.',
-  hasReEchoed: false,
-  createdAt: '2025-10-25T12:00:00Z',
+const mockEchos: Record<string, any> = {
+  '1': {
+    id: '1',
+    title: 'The Future of AI in Healthcare',
+    distance: 0.7,
+    reEchoCount: 359,
+    seenCount: 1250,
+    audioUrl: '/audio/sample1.mp3',
+    transcript:
+      'This is a transcript of the echo about AI in healthcare. In this recording, I discuss how artificial intelligence is transforming the healthcare industry, from diagnosis to treatment planning. The integration of machine learning algorithms has enabled doctors to detect diseases earlier and with greater accuracy. We are seeing remarkable improvements in imaging analysis, personalized medicine, and patient care coordination.',
+    hasReEchoed: false,
+    createdAt: '2025-10-25T12:00:00Z',
+  },
+  '2': {
+    id: '2',
+    title: 'Coffee Shop Reviews Downtown',
+    distance: 7,
+    reEchoCount: 359,
+    seenCount: 450,
+    audioUrl: '/audio/sample2.mp3',
+    transcript: 'Here are my thoughts on the best coffee shops downtown...',
+    hasReEchoed: false,
+    createdAt: '2025-10-25T11:00:00Z',
+  },
 };
 
 interface PageProps {
@@ -26,12 +41,45 @@ interface PageProps {
 export default function EchoDetailPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const router = useRouter();
+  const { newEchos } = useEcho();
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  const [echo, setEcho] = useState<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
+
+  // Load echo data on mount
+  useEffect(() => {
+    const echoId = resolvedParams.id;
+
+    // First check in newly uploaded echos
+    const newEcho = newEchos.find((e) => e.id === echoId);
+    if (newEcho) {
+      setEcho(newEcho);
+      return;
+    }
+
+    // Then check in uploaded echos from localStorage
+    const uploadedEchos = localStorage.getItem('uploadedEchos');
+    if (uploadedEchos) {
+      const parsed = JSON.parse(uploadedEchos);
+      const uploadedEcho = parsed.find((e: Echo) => e.id === echoId);
+      if (uploadedEcho) {
+        setEcho(uploadedEcho);
+        return;
+      }
+    }
+
+    // Finally check mock data
+    if (mockEchos[echoId]) {
+      setEcho(mockEchos[echoId]);
+    } else {
+      // Fallback to first mock echo if not found
+      setEcho(mockEchos['1']);
+    }
+  }, [resolvedParams.id, newEchos]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -129,17 +177,23 @@ export default function EchoDetailPage({ params }: PageProps) {
       </header>
 
       <main className="max-w-md mx-auto px-4 py-6 space-y-6">
-        {/* Echo Title */}
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">{mockEcho.title}</h2>
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <span>{mockEcho.distance} mi away</span>
-            <span>•</span>
-            <span>{mockEcho.reEchoCount} re-echos</span>
-            <span>•</span>
-            <span>{mockEcho.seenCount} views</span>
+        {!echo ? (
+          <div className="text-center py-16">
+            <p className="text-gray-500">Loading...</p>
           </div>
-        </div>
+        ) : (
+          <>
+            {/* Echo Title */}
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">{echo.title}</h2>
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <span>{echo.distance} mi away</span>
+                <span>•</span>
+                <span>{echo.reEchoCount} re-echos</span>
+                <span>•</span>
+                <span>{echo.seenCount} views</span>
+              </div>
+            </div>
 
         {/* Audio Visualizer */}
         <AudioVisualizer isPlaying={isPlaying} />
@@ -254,12 +308,14 @@ export default function EchoDetailPage({ params }: PageProps) {
         {/* Transcript */}
         <div className="bg-white rounded-lg p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900 mb-3">Transcript</h3>
-          <p className="text-gray-700 leading-relaxed">{mockEcho.transcript}</p>
+          <p className="text-gray-700 leading-relaxed">{echo.transcript || 'No transcript available'}</p>
         </div>
-      </main>
 
-      {/* Hidden audio element */}
-      <audio ref={audioRef} src={mockEcho.audioUrl} preload="metadata" />
+        {/* Hidden audio element */}
+        <audio ref={audioRef} src={echo.audioUrl} preload="metadata" />
+      </>
+        )}
+      </main>
 
       <Navbar />
     </div>

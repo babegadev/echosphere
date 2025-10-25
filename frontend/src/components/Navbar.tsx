@@ -8,7 +8,7 @@ export default function Navbar() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
-      <div className="max-w-md mx-auto px-6 py-3 flex items-end justify-between">
+      <div className="max-w-md mx-auto px-6 py-3 flex items-end justify-center gap-28 relative">
         {/* Home Button */}
         <Link
           href="/"
@@ -30,13 +30,13 @@ export default function Navbar() {
           <span className="text-xs">Home</span>
         </Link>
 
-        {/* Echo Button (Elevated) */}
+        {/* Echo Button (Half Elevated) */}
         <Link
           href="/create-echo"
-          className="flex items-center justify-center w-16 h-16 -mt-8 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 transition-colors"
+          className="absolute left-1/2 -translate-x-1/2 -top-6 flex items-center justify-center w-14 h-14 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 transition-colors"
         >
           <svg
-            className="w-8 h-8"
+            className="w-7 h-7"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
