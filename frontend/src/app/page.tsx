@@ -1,19 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import EchoCard from '@/components/EchoCard';
 import Navbar from '@/components/Navbar';
 import Toast from '@/components/Toast';
 import { Echo } from '@/types/echo';
+import { useEcho } from '@/contexts/EchoContext';
 
 // Mock data for demonstration
 const mockEchos: Echo[] = [
   {
     id: '1',
     title: 'The Future of AI in Healthcare',
-    distance: 0.7,
-    reEchoCount: 359,
-    seenCount: 1250,
+    username: 'aubreyasta_',
+    avatarColor: '#C0C0C0',
+    distance: 12,
+    reEchoCount: 8,
+    seenCount: 12,
     audioUrl: '/audio/sample1.mp3',
     transcript: 'This is a transcript of the echo about AI in healthcare...',
     hasReEchoed: false,
@@ -22,8 +25,10 @@ const mockEchos: Echo[] = [
   {
     id: '2',
     title: 'Coffee Shop Reviews Downtown',
-    distance: 1.9,
-    reEchoCount: 116,
+    username: 'jadon_rybak',
+    avatarColor: '#FFB6C1',
+    distance: 7,
+    reEchoCount: 359,
     seenCount: 450,
     audioUrl: '/audio/sample2.mp3',
     transcript: 'Here are my thoughts on the best coffee shops downtown...',
@@ -33,8 +38,10 @@ const mockEchos: Echo[] = [
   {
     id: '3',
     title: 'Morning Meditation Tips',
-    distance: 3.1,
-    reEchoCount: 133,
+    username: 'amel',
+    avatarColor: '#FFD700',
+    distance: 19,
+    reEchoCount: 116,
     seenCount: 890,
     audioUrl: '/audio/sample3.mp3',
     transcript: 'Let me share some meditation techniques that work for me...',
@@ -44,8 +51,10 @@ const mockEchos: Echo[] = [
   {
     id: '4',
     title: 'Local Music Scene Update',
-    distance: 4.3,
-    reEchoCount: 68,
+    username: 'indy_mindy',
+    avatarColor: '#87CEEB',
+    distance: 31,
+    reEchoCount: 133,
     seenCount: 320,
     audioUrl: '/audio/sample4.mp3',
     transcript: 'The local music scene has been amazing lately...',
@@ -55,8 +64,10 @@ const mockEchos: Echo[] = [
   {
     id: '5',
     title: 'Best Hiking Trails Nearby',
-    distance: 2,
-    reEchoCount: 29,
+    username: 'dimi',
+    avatarColor: '#98FB98',
+    distance: 43,
+    reEchoCount: 68,
     seenCount: 180,
     audioUrl: '/audio/sample5.mp3',
     transcript: 'I want to share the best hiking trails in our area...',
@@ -66,11 +77,22 @@ const mockEchos: Echo[] = [
 ];
 
 export default function Home() {
+  const { newEchos } = useEcho();
   const [echos, setEchos] = useState<Echo[]>(mockEchos);
+  const [activeConfirmationId, setActiveConfirmationId] = useState<string | null>(null);
   const [toast, setToast] = useState<{
     message: string;
     type: 'success' | 'error';
   } | null>(null);
+
+  // Combine new echos with existing echos
+  const allEchos = useMemo(() => {
+    return [...newEchos, ...echos];
+  }, [newEchos, echos]);
+
+  const handleReEchoClick = (echoId: string) => {
+    setActiveConfirmationId(echoId);
+  };
 
   const handleReEcho = (echoId: string, confirm: boolean) => {
     if (confirm) {
@@ -86,6 +108,7 @@ export default function Home() {
     } else {
       setToast({ message: 'Re-echo cancelled', type: 'error' });
     }
+    setActiveConfirmationId(null);
   };
 
   return (
@@ -100,8 +123,17 @@ export default function Home() {
 
         {/* Echo List */}
         <main className="max-w-md mx-auto">
-          {echos.map((echo) => (
-            <EchoCard key={echo.id} echo={echo} onReEcho={handleReEcho} />
+          {allEchos.map((echo, index) => (
+            <EchoCard
+              key={echo.id}
+              echo={echo}
+              onReEcho={handleReEcho}
+              onReEchoClick={handleReEchoClick}
+              disabled={false}
+              isConfirmationActive={activeConfirmationId === echo.id}
+              hasActiveConfirmation={activeConfirmationId !== null}
+              isNewlyUploaded={index < newEchos.length}
+            />
           ))}
         </main>
 
