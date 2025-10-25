@@ -68,7 +68,11 @@ export async function convertWebMToMP3(webmBlob: Blob): Promise<Blob> {
     const data = await ffmpegInstance.readFile(outputFileName)
 
     // Create blob from the output data
-    const mp3Blob = new Blob([data], { type: 'audio/mpeg' })
+    // Ensure data is Uint8Array and convert to regular buffer for Blob compatibility
+    if (typeof data === 'string') {
+      throw new Error('Expected binary data but got string')
+    }
+    const mp3Blob = new Blob([new Uint8Array(data)], { type: 'audio/mpeg' })
 
     // Clean up files from virtual filesystem
     await ffmpegInstance.deleteFile(inputFileName)
