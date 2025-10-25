@@ -1,6 +1,7 @@
 import { createClient } from './supabase'
 import { Echo } from '@/types/echo'
 import APP_CONFIG from '@/config/app.config'
+import { convertWebMToMP3 } from './audio-converter'
 
 // Helper function to format distance from meters
 function formatDistance(meters: number | null | undefined): number {
@@ -299,27 +300,37 @@ export async function uploadEchoAudio(
 ): Promise<string | null> {
   const supabase = createClient()
 
-  const fileName = `${Date.now()}.webm`
-  const filePath = `${userId}/${fileName}`
+  try {
+    // Convert WebM to MP3
+    console.log('🔄 Converting audio to MP3...')
+    const mp3Blob = await convertWebMToMP3(file)
+    console.log('✅ Audio converted to MP3')
 
-  const { data, error } = await supabase.storage
-    .from('echo-audio')
-    .upload(filePath, file, {
-      contentType: file.type || 'audio/webm',
-      upsert: false,
-    })
+    const fileName = `${Date.now()}.mp3`
+    const filePath = `${userId}/${fileName}`
 
-  if (error) {
-    console.error('Error uploading audio:', error)
+    const { data, error } = await supabase.storage
+      .from('echo-audio')
+      .upload(filePath, mp3Blob, {
+        contentType: 'audio/mpeg',
+        upsert: false,
+      })
+
+    if (error) {
+      console.error('Error uploading audio:', error)
+      return null
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('echo-audio')
+      .getPublicUrl(data.path)
+
+    return urlData.publicUrl
+  } catch (error) {
+    console.error('Error processing audio:', error)
     return null
   }
-
-  // Get public URL
-  const { data: urlData } = supabase.storage
-    .from('echo-audio')
-    .getPublicUrl(data.path)
-
-  return urlData.publicUrl
 }
 
 // Helper function to map database echoes to Echo type
