@@ -1,5 +1,6 @@
 export interface Echo {
   id: string;
+  userId: string; // User ID of the echo owner
   title: string;
   username: string;
   avatarColor?: string; // Optional color for the avatar circle (fallback)

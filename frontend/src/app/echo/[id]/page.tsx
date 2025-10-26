@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import AudioVisualizer from '@/components/AudioVisualizer'
 import Navbar from '@/components/Navbar'
 import { Echo } from '@/types/echo'
-import { getEchoById, recordListen, reEcho as reEchoDb } from '@/lib/echoes'
+import { getEchoById, recordListen, reEcho as reEchoDb, checkUserHasReEchoed } from '@/lib/echoes'
 import { useAuth } from '@/contexts/AuthContext'
 import Toast from '@/components/Toast'
 
@@ -97,6 +97,13 @@ export default function EchoDetailPage({ params }: PageProps) {
       if (fetchedEcho) {
         console.log('📦 Fetched echo:', fetchedEcho)
         setEcho(fetchedEcho)
+
+        // Check if user has already re-echoed this echo
+        if (user) {
+          const hasReEchoedStatus = await checkUserHasReEchoed(user.id, fetchedEcho.id)
+          setHasReEchoed(hasReEchoedStatus)
+          console.log('🔄 User has re-echoed:', hasReEchoedStatus)
+        }
       }
     } catch (error) {
       console.error('Error loading echo:', error)
@@ -271,6 +278,15 @@ export default function EchoDetailPage({ params }: PageProps) {
       return
     }
 
+    if (!echo) {
+      return
+    }
+
+    if (echo.userId === user.id) {
+      setToast({ message: 'You cannot re-echo your own echo', type: 'error' })
+      return
+    }
+
     if (hasReEchoed) {
       setToast({ message: 'You already re-echoed this', type: 'error' })
       return
@@ -371,15 +387,29 @@ export default function EchoDetailPage({ params }: PageProps) {
         </div>
 
         {/* Echo Title - Centered */}
-        <h2 className="text-xl font-bold text-white mb-12 text-center">{echo.title}</h2>
+        <h2 className="text-xl font-bold text-white mb-8 text-center">{echo.title}</h2>
+
+        {/* Avatar and Username - Centered */}
+        <div className="flex flex-col items-center mb-8">
+          {echo.avatarUrl ? (
+            <img
+              src={echo.avatarUrl}
+              alt={`@${echo.username}`}
+              className="w-20 h-20 rounded-full object-cover mb-3"
+            />
+          ) : (
+            <div
+              className="w-20 h-20 rounded-full mb-3"
+              style={{ backgroundColor: echo.avatarColor || '#D1D5DB' }}
+            />
+          )}
+          <p className="text-sm text-gray-400">@{echo.username || 'unknown'}</p>
+        </div>
 
         {/* Audio Visualizer - Circular in center */}
         <div className="mb-6">
           <AudioVisualizer isPlaying={isPlaying} />
         </div>
-
-        {/* Username below visualizer */}
-        <p className="text-sm text-gray-400 mb-8">@{echo.username || 'unknown'}</p>
 
         {/* Audio Progress Bar */}
         <div className="w-full max-w-xs mb-8">
@@ -438,17 +468,17 @@ export default function EchoDetailPage({ params }: PageProps) {
           {!showReEchoConfirm ? (
             <button
               onClick={handleReEchoClick}
-              disabled={hasReEchoed}
+              disabled={hasReEchoed || (echo && user ? echo.userId === user.id : false)}
               className="flex flex-col items-center gap-2"
               aria-label="Re-echo"
             >
               <div
-                className={`p-3 rounded-full ${hasReEchoed ? 'bg-gray-600' : ''}`}
-                style={!hasReEchoed ? {
+                className={`p-3 rounded-full ${hasReEchoed || (echo && user ? echo.userId === user.id : false) ? 'bg-gray-600' : ''}`}
+                style={!hasReEchoed && !(echo && user ? echo.userId === user.id : false) ? {
                   background: 'linear-gradient(87deg, #F8E880 32.94%, #FBF2B7 94.43%)'
                 } : {}}
               >
-                <svg className="w-8 h-8 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <svg className={`w-8 h-8 ${hasReEchoed || (echo && user ? echo.userId === user.id : false) ? 'text-gray-400' : 'text-black'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"

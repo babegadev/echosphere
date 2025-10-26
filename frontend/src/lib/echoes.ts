@@ -262,6 +262,28 @@ export async function reEcho(
   return true
 }
 
+// Check if user has re-echoed an echo
+export async function checkUserHasReEchoed(
+  userId: string,
+  echoId: string
+): Promise<boolean> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('re_echoes')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('original_echo_id', echoId)
+    .limit(1)
+
+  if (error) {
+    console.error('Error checking re-echo status:', error)
+    return false
+  }
+
+  return (data?.length || 0) > 0
+}
+
 // Record a listen/view
 export async function recordListen(
   echoId: string,
@@ -364,6 +386,7 @@ function mapDBEchoToEcho(dbEcho: any): Echo {
 
   return {
     id: dbEcho.id,
+    userId: dbEcho.user_id,
     title: dbEcho.caption || 'Untitled Echo',
     username: profile?.username || 'unknown',
     avatarColor: colors[colorIndex],
