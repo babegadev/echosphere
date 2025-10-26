@@ -10,4 +10,5 @@ export interface Echo {
   transcript: string;
   hasReEchoed: boolean;
   createdAt: string;
+  duration: number; // Duration in seconds
 }

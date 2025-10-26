@@ -28,6 +28,7 @@ export default function EchoDetailPage({ params }: PageProps) {
   const [hasRecordedListen, setHasRecordedListen] = useState(false)
   const [hasReEchoed, setHasReEchoed] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // Load echo data from database
   useEffect(() => {
@@ -48,22 +49,78 @@ export default function EchoDetailPage({ params }: PageProps) {
     }
   }
 
+  // Reload audio when echo changes and set initial duration
+  useEffect(() => {
+    if (echo && audioRef.current) {
+      audioRef.current.load()
+      setCurrentTime(0)
+      setIsPlaying(false)
+
+      // Set duration from database if available
+      if (echo.duration && echo.duration > 0) {
+        console.log('📊 Setting duration from database:', echo.duration, 'seconds')
+        setDuration(echo.duration)
+      }
+    }
+  }, [echo?.audioUrl, echo?.duration])
+
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
 
-    const updateTime = () => setCurrentTime(audio.currentTime)
-    const updateDuration = () => setDuration(audio.duration)
-    const handleEnded = () => setIsPlaying(false)
+    const updateTime = () => {
+      setCurrentTime(audio.currentTime)
+      // Debug: Log every 2 seconds to avoid spam
+      if (Math.floor(audio.currentTime) % 2 === 0) {
+        console.log('⏱️ Current time:', audio.currentTime.toFixed(2), 'seconds')
+      }
+    }
+    const updateDuration = () => {
+      if (audio.duration && isFinite(audio.duration)) {
+        console.log('🎵 Audio duration updated from metadata:', audio.duration, 'seconds')
+        setDuration(audio.duration)
+      }
+    }
+    const handleEnded = () => {
+      setIsPlaying(false)
+      // Clear interval when audio ends
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    }
+    const handleCanPlay = () => {
+      // Also try to set duration when audio can play
+      if (audio.duration && isFinite(audio.duration)) {
+        console.log('▶️ Audio can play, duration:', audio.duration, 'seconds')
+        setDuration(audio.duration)
+      }
+    }
 
     audio.addEventListener('timeupdate', updateTime)
     audio.addEventListener('loadedmetadata', updateDuration)
+    audio.addEventListener('canplay', handleCanPlay)
+    audio.addEventListener('durationchange', updateDuration)
     audio.addEventListener('ended', handleEnded)
+
+    // Try to set duration immediately if already loaded
+    if (audio.duration && isFinite(audio.duration)) {
+      console.log('✅ Audio already loaded, duration:', audio.duration, 'seconds')
+      setDuration(audio.duration)
+    }
 
     return () => {
       audio.removeEventListener('timeupdate', updateTime)
       audio.removeEventListener('loadedmetadata', updateDuration)
+      audio.removeEventListener('canplay', handleCanPlay)
+      audio.removeEventListener('durationchange', updateDuration)
       audio.removeEventListener('ended', handleEnded)
+
+      // Clear interval on cleanup
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
     }
   }, [])
 
@@ -85,8 +142,24 @@ export default function EchoDetailPage({ params }: PageProps) {
 
     if (isPlaying) {
       audio.pause()
+      console.log('⏸️ Audio paused')
+      // Clear interval when pausing
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
     } else {
-      audio.play()
+      audio.play().then(() => {
+        console.log('▶️ Audio playing')
+        // Start interval to update currentTime (fallback if timeupdate doesn't fire)
+        intervalRef.current = setInterval(() => {
+          if (audio.currentTime) {
+            setCurrentTime(audio.currentTime)
+          }
+        }, 100) // Update every 100ms for smooth progress
+      }).catch((error) => {
+        console.error('❌ Error playing audio:', error)
+      })
     }
     setIsPlaying(!isPlaying)
   }
@@ -287,14 +360,20 @@ export default function EchoDetailPage({ params }: PageProps) {
 
         {/* Audio Progress Bar */}
         <div className="space-y-2">
-          <input
-            type="range"
-            min="0"
-            max={duration || 0}
-            value={currentTime}
-            onChange={handleSeek}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-          />
+          <div className="relative">
+            <input
+              type="range"
+              min="0"
+              max={duration || 0}
+              value={currentTime}
+              onChange={handleSeek}
+              step="0.1"
+              style={{
+                background: `linear-gradient(to right, #2563eb 0%, #2563eb ${(currentTime / (duration || 1)) * 100}%, #e5e7eb ${(currentTime / (duration || 1)) * 100}%, #e5e7eb 100%)`
+              }}
+              className="w-full h-2 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-600 [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-blue-600 [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
+            />
+          </div>
           <div className="flex justify-between text-sm text-gray-600">
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(duration)}</span>
@@ -393,7 +472,7 @@ export default function EchoDetailPage({ params }: PageProps) {
         </div>
 
         {/* Transcript */}
-        <div className="bg-white rounded-lg p-6 shadow-sm">
+        {/* <div className="bg-white rounded-lg p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900 mb-3">Transcript</h3>
           {echo.transcript ? (
             <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{echo.transcript}</p>
@@ -416,7 +495,7 @@ export default function EchoDetailPage({ params }: PageProps) {
               <p className="text-sm text-gray-400 mt-1">Check back soon!</p>
             </div>
           )}
-        </div>
+        </div> */}
 
         {/* Re-echo Button */}
         <button
@@ -451,7 +530,12 @@ export default function EchoDetailPage({ params }: PageProps) {
         </button>
 
         {/* Hidden audio element */}
-        <audio ref={audioRef} src={echo.audioUrl} preload="metadata" />
+        <audio
+          ref={audioRef}
+          src={echo.audioUrl}
+          preload="metadata"
+          crossOrigin="anonymous"
+        />
       </main>
 
       {/* Toast */}

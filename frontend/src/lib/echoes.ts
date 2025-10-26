@@ -359,5 +359,6 @@ function mapDBEchoToEcho(dbEcho: any): Echo {
     transcript: dbEcho.transcript || '',
     hasReEchoed: false, // TODO: Check if current user has re-echoed
     createdAt: dbEcho.created_at,
+    duration: dbEcho.duration || 0,
   }
 }
