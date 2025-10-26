@@ -40,11 +40,19 @@ export default function EchoCard({
     <Link href={`/echo/${echo.id}`}>
       <div className="bg-white border-b border-gray-200 px-4 py-3 hover:bg-gray-50 transition-colors">
         <div className="flex gap-3 items-start">
-          {/* Avatar Circle */}
-          <div
-            className="w-12 h-12 rounded-full flex-shrink-0"
-            style={{ backgroundColor: echo.avatarColor || '#D1D5DB' }}
-          />
+          {/* Avatar */}
+          {echo.avatarUrl ? (
+            <img
+              src={echo.avatarUrl}
+              alt={`@${echo.username}`}
+              className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+            />
+          ) : (
+            <div
+              className="w-12 h-12 rounded-full flex-shrink-0"
+              style={{ backgroundColor: echo.avatarColor || '#D1D5DB' }}
+            />
+          )}
 
           {/* Content */}
           <div className="flex-1 min-w-0">
