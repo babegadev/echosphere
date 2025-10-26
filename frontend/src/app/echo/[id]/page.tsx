@@ -10,18 +10,18 @@ import { useAuth } from '@/contexts/AuthContext'
 import Toast from '@/components/Toast'
 
 // Helper function to format distance for display
-function formatDistanceDisplay(feet: number): string {
-  console.log('🔍 formatDistanceDisplay called with:', feet)
-  if (feet === 0) return 'Unknown distance';
+function formatDistanceDisplay(meters: number): string {
+  console.log('🔍 formatDistanceDisplay called with:', meters)
+  if (meters === 0) return 'Unknown distance';
 
-  // If distance is more than 1000 feet, show in miles
-  if (feet >= 1000) {
-    const miles = (feet / 5280).toFixed(1);
-    return `${miles} mi away`;
+  // If distance is 1km or more, show in kilometers
+  if (meters >= 1000) {
+    const km = (meters / 1000).toFixed(1);
+    return `${km} km away`;
   }
 
-  // Otherwise show in feet
-  return `${feet.toLocaleString()} ft away`;
+  // Otherwise show in meters
+  return `${meters.toLocaleString()} m away`;
 }
 
 interface PageProps {

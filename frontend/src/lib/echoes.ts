@@ -7,11 +7,8 @@ import { convertWebMToMP3 } from './audio-converter'
 function formatDistance(meters: number | null | undefined): number {
   if (meters == null) return 0
 
-  // Convert meters to feet (1 meter = 3.28084 feet)
-  const feet = meters * 3.28084
-
-  // Round to nearest whole number
-  return Math.round(feet)
+  // Return meters as-is, rounded to nearest whole number
+  return Math.round(meters)
 }
 
 interface DBEcho {
