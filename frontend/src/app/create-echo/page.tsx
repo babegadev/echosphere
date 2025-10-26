@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import VoiceVisualizer from '@/components/VoiceVisualizer';
 import Toast from '@/components/Toast';
@@ -10,6 +10,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Echo } from '@/types/echo';
 import { uploadEchoAudio, createEcho } from '@/lib/echoes';
 import { createArchivedEcho, uploadAudioFile } from '@/lib/archived-echoes';
+import { createClient } from '@/lib/supabase';
+import Link from 'next/link';
 
 type RecordingState = 'idle' | 'recording' | 'stopped';
 
@@ -27,12 +29,32 @@ export default function CreateEchoPage() {
   const [recordingTitle] = useState('Untitled Echo');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recordingStartTimeRef = useRef<number>(0);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    loadUserAvatar()
+  }, [])
+
+  const loadUserAvatar = async () => {
+    if (!user) return
+
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('avatar_url')
+      .eq('id', user.id)
+      .single()
+
+    if (!error && data) {
+      setAvatarUrl(data.avatar_url)
+    }
+  }
 
   // Get user's current location
   const getUserLocation = () => {
@@ -291,35 +313,54 @@ export default function CreateEchoPage() {
 
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-md mx-auto px-4 py-4 flex items-center gap-4">
-          <button
-            onClick={() => router.back()}
-            className="text-gray-600 hover:text-gray-900"
-            aria-label="Go back"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
+    <div className="min-h-screen bg-black pb-20">
+      {/* Header */}
+      <header className="bg-black border-b border-gray-800 sticky top-0 z-10">
+        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between relative">
+          {/* Profile Picture - Left */}
+          <Link href="/profile" className="flex-shrink-0">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt="Profile"
+                className="w-10 h-10 rounded-full object-cover"
               />
-            </svg>
-          </button>
-          <h1 className="text-xl font-bold text-gray-900">Create Echo</h1>
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600" />
+            )}
+          </Link>
+
+          {/* Create Echo Title - Center */}
+          <div
+            className="px-6 py-3 rounded-full text-black font-semibold text-base font-[family-name:var(--font-roboto)] absolute left-1/2 -translate-x-1/2"
+            style={{
+              width: '179px',
+              height: '50px',
+              background: 'linear-gradient(87deg, #F8E880 32.94%, #FBF2B7 94.43%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            Create Echo
+          </div>
+
+          {/* Empty spacer - Right */}
+          <div className="w-10 flex-shrink-0"></div>
         </div>
       </header>
 
       <main className="w-full max-w-md mx-auto px-4 py-6 flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
         {recordingState === 'idle' && (
-          <div className="text-center">
+          <div className="flex flex-col items-center justify-center w-full">
             <button
               onClick={startRecording}
-              className="w-32 h-32 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center shadow-lg transition-all transform hover:scale-105"
+              className="w-32 h-32 rounded-full flex items-center justify-center shadow-lg transition-all transform hover:scale-105 mx-auto"
+              style={{
+                background: 'linear-gradient(87deg, #F8E880 32.94%, #FBF2B7 94.43%)'
+              }}
             >
-              <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-16 h-16 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -328,7 +369,7 @@ export default function CreateEchoPage() {
                 />
               </svg>
             </button>
-            <p className="mt-6 text-gray-600 text-lg">Tap to start recording</p>
+            <p className="mt-6 text-white text-lg text-center">Tap to start recording</p>
           </div>
         )}
 
@@ -343,22 +384,25 @@ export default function CreateEchoPage() {
               Stop Recording
             </button>
 
-            <p className="text-gray-600">Recording in progress...</p>
+            <p className="text-white">Recording in progress...</p>
           </div>
         )}
 
         {recordingState === 'stopped' && audioUrl && (
           <div className="w-full space-y-6">
             {/* Playback Controls */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">{recordingTitle}</h3>
+            <div className="bg-gray-900 rounded-lg p-6 shadow-sm border border-gray-800">
+              <h3 className="text-lg font-semibold text-white mb-4">{recordingTitle}</h3>
 
               {/* Progress Bar */}
               <div className="mb-4 space-y-2">
-                <div className="relative w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div className="relative w-full h-2 bg-gray-700 rounded-full overflow-hidden">
                   <div
-                    className="absolute top-0 left-0 h-full bg-blue-600 transition-all duration-100"
-                    style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                    className="absolute top-0 left-0 h-full transition-all duration-100"
+                    style={{
+                      width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
+                      background: 'linear-gradient(87deg, #F8E880 32.94%, #FBF2B7 94.43%)'
+                    }}
                   />
                   <input
                     type="range"
@@ -370,7 +414,7 @@ export default function CreateEchoPage() {
                     className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
                   />
                 </div>
-                <div className="flex justify-between text-sm text-gray-600">
+                <div className="flex justify-between text-sm text-gray-400">
                   <span>{formatTime(currentTime)}</span>
                   <span>{formatTime(duration)}</span>
                 </div>
@@ -381,18 +425,24 @@ export default function CreateEchoPage() {
                 {!isPlaying ? (
                   <button
                     onClick={playRecording}
-                    className="w-12 h-12 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center shadow-lg transition-colors"
+                    className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-colors"
+                    style={{
+                      background: 'linear-gradient(87deg, #F8E880 32.94%, #FBF2B7 94.43%)'
+                    }}
                   >
-                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6 text-black" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M8 5v14l11-7z" />
                     </svg>
                   </button>
                 ) : (
                   <button
                     onClick={pauseRecording}
-                    className="w-12 h-12 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center shadow-lg transition-colors"
+                    className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-colors"
+                    style={{
+                      background: 'linear-gradient(87deg, #F8E880 32.94%, #FBF2B7 94.43%)'
+                    }}
                   >
-                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6 text-black" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
                     </svg>
                   </button>
@@ -434,21 +484,24 @@ export default function CreateEchoPage() {
             <div className="space-y-3">
               <button
                 onClick={handleUpload}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-sm transition-colors"
+                className="w-full py-3 text-black rounded-lg font-semibold shadow-sm transition-all transform hover:scale-105"
+                style={{
+                  background: 'linear-gradient(87deg, #F8E880 32.94%, #FBF2B7 94.43%)'
+                }}
               >
                 Upload Echo
               </button>
 
               <button
                 onClick={handleArchive}
-                className="w-full py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium shadow-sm transition-colors"
+                className="w-full py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold shadow-sm transition-colors border border-gray-600"
               >
                 Archive & Save
               </button>
 
               <button
                 onClick={handleDelete}
-                className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium shadow-sm transition-colors"
+                className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold shadow-sm transition-colors"
               >
                 Delete Recording
               </button>
