@@ -370,6 +370,7 @@ function mapDBEchoToEcho(dbEcho: any): Echo {
     title: dbEcho.caption || 'Untitled Echo',
     username: profile?.username || 'unknown',
     avatarColor: colors[colorIndex],
+    avatarUrl: profile?.avatar_url || null,
     distance: formatDistance(dbEcho.distance),
     reEchoCount: dbEcho.re_echo_count || 0,
     seenCount: dbEcho.listen_count || 0,
