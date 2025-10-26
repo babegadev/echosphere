@@ -90,6 +90,7 @@ export default function ProfilePage() {
     if (!error && data) {
       const echoes: Echo[] = data.map((echo: any) => ({
         id: echo.id,
+        userId: echo.user_id,
         title: echo.title || 'Untitled Echo',
         username: username,
         avatarUrl: avatarUrl || undefined,
@@ -307,6 +308,7 @@ export default function ProfilePage() {
     // Create a new echo object to add to the feed
     const newEcho: Echo = {
       id: `uploaded-${Date.now()}`,
+      userId: user?.id || 'anonymous',
       title: archivedEcho.title || 'Untitled Echo',
       username: username, // Use the current user's username
       avatarColor: '#3B82F6', // Blue color for newly uploaded echos

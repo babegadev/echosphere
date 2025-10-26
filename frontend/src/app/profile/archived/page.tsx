@@ -62,6 +62,7 @@ export default function ArchivedEchosPage() {
     // Create a new echo object to add to the feed
     const newEcho: Echo = {
       id: `uploaded-${Date.now()}`,
+      userId: user?.id || 'anonymous',
       title: archivedEcho.title || 'Untitled Echo',
       username: username,
       avatarColor: '#3B82F6',
