@@ -2,7 +2,7 @@
 
 export const APP_CONFIG = {
   // Echo feed settings
-  NEARBY_ECHOES_RADIUS_METERS: 50000, // 50km radius for nearby echoes
+  NEARBY_ECHOES_RADIUS_METERS: 500000, // 50km radius for nearby echoes
 
   // Default location (fallback if user denies location access)
   DEFAULT_LOCATION: {

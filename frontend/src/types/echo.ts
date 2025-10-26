@@ -4,7 +4,7 @@ export interface Echo {
   username: string;
   avatarColor?: string; // Optional color for the avatar circle (fallback)
   avatarUrl?: string; // Profile picture URL from profiles table
-  distance: number; // in miles
+  distance: number; // in meters
   reEchoCount: number;
   seenCount: number;
   audioUrl: string;
