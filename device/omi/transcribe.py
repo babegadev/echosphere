@@ -23,8 +23,8 @@ async def transcribe(
     while True:
         try:
             async with websockets.connect(
-                url, 
-                additional_headers={"Authorization": f"Token {api_key}"}
+                url,
+                extra_headers={"Authorization": f"Token {api_key}"}
             ) as ws:
                 print("Connected to Deepgram WebSocket")
 

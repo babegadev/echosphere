@@ -22,7 +22,7 @@ class TriggerRecorder:
         triggers = ['hey echo', 'record echo', 'start echo']
         return any(t in transcript.lower() for t in triggers)
     
-    def start_recording(self, duration=5):
+    def start_recording(self, duration=10):
         self.recording = True
         self.recording_start = time.time()
         self.recording_duration = duration
