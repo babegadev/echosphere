@@ -92,7 +92,7 @@ export default function ProfilePage() {
         id: echo.id,
         title: echo.title || 'Untitled Echo',
         username: username,
-        avatarUrl: avatarUrl,
+        avatarUrl: avatarUrl || undefined,
         avatarColor: '#3B82F6',
         distance: 0,
         reEchoCount: echo.re_echo_count || 0,
