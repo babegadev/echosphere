@@ -9,6 +9,21 @@ import { getEchoById, recordListen, reEcho as reEchoDb } from '@/lib/echoes'
 import { useAuth } from '@/contexts/AuthContext'
 import Toast from '@/components/Toast'
 
+// Helper function to format distance for display
+function formatDistanceDisplay(feet: number): string {
+  console.log('🔍 formatDistanceDisplay called with:', feet)
+  if (feet === 0) return 'Unknown distance';
+
+  // If distance is more than 1000 feet, show in miles
+  if (feet >= 1000) {
+    const miles = (feet / 5280).toFixed(1);
+    return `${miles} mi away`;
+  }
+
+  // Otherwise show in feet
+  return `${feet.toLocaleString()} ft away`;
+}
+
 interface PageProps {
   params: Promise<{ id: string }>
 }
@@ -29,17 +44,57 @@ export default function EchoDetailPage({ params }: PageProps) {
   const [hasReEchoed, setHasReEchoed] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
 
-  // Load echo data from database
+  // Get user's location on mount
   useEffect(() => {
-    loadEcho()
-  }, [resolvedParams.id])
+    getUserLocation()
+  }, [])
+
+  const getUserLocation = () => {
+    console.log('🌍 Attempting to get user location...')
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          }
+          setUserLocation(location)
+          console.log('✅ User location obtained:', location)
+        },
+        (error) => {
+          console.error('❌ Error getting location:', error)
+          setUserLocation({ lat: 0, lng: 0 })
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 60000,
+        }
+      )
+    } else {
+      console.log('⚠️ Geolocation not supported')
+      setUserLocation({ lat: 0, lng: 0 })
+    }
+  }
+
+  // Load echo data from database when location is available
+  useEffect(() => {
+    console.log('🔄 Location state changed:', userLocation)
+    if (userLocation !== null) {
+      console.log('📥 Loading echo with location...')
+      loadEcho()
+    }
+  }, [resolvedParams.id, userLocation])
 
   const loadEcho = async () => {
     setLoading(true)
+    console.log('🎯 loadEcho called, passing location:', userLocation)
     try {
-      const fetchedEcho = await getEchoById(resolvedParams.id)
+      const fetchedEcho = await getEchoById(resolvedParams.id, userLocation || undefined)
       if (fetchedEcho) {
+        console.log('📦 Fetched echo:', fetchedEcho)
         setEcho(fetchedEcho)
       }
     } catch (error) {
@@ -347,7 +402,7 @@ export default function EchoDetailPage({ params }: PageProps) {
         <div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">{echo.title}</h2>
           <div className="flex items-center gap-4 text-sm text-gray-600">
-            <span>{echo.distance} mi away</span>
+            <span>{formatDistanceDisplay(echo.distance)}</span>
             <span>•</span>
             <span>{echo.reEchoCount} re-echos</span>
             <span>•</span>
