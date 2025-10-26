@@ -13,6 +13,7 @@ interface ArchivedEcho {
   url: string;
   createdAt: string;
   title?: string;
+  duration?: number;
 }
 
 export default function ProfilePage() {
@@ -94,6 +95,7 @@ export default function ProfilePage() {
       transcript: '', // TODO: Add transcript generation
       hasReEchoed: false,
       createdAt: new Date().toISOString(),
+      duration: archivedEcho.duration || 0,
     };
 
     // Add to feed immediately
