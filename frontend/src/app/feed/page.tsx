@@ -8,6 +8,8 @@ import { Echo } from '@/types/echo'
 import { useEcho } from '@/contexts/EchoContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { getNearbyEchoes, reEcho as reEchoDb } from '@/lib/echoes'
+import { createClient } from '@/lib/supabase'
+import Link from 'next/link'
 
 export default function FeedPage() {
   const { newEchos } = useEcho()
@@ -16,15 +18,32 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [activeConfirmationId, setActiveConfirmationId] = useState<string | null>(null)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [toast, setToast] = useState<{
     message: string
     type: 'success' | 'error'
   } | null>(null)
 
-  // Get user's location on mount
+  // Get user's location and avatar on mount
   useEffect(() => {
     getUserLocation()
+    loadUserAvatar()
   }, [])
+
+  const loadUserAvatar = async () => {
+    if (!user) return
+
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('avatar_url')
+      .eq('id', user.id)
+      .single()
+
+    if (!error && data) {
+      setAvatarUrl(data.avatar_url)
+    }
+  }
 
   // Load echoes when location is available
   useEffect(() => {
@@ -34,33 +53,60 @@ export default function FeedPage() {
   }, [userLocation])
 
   const getUserLocation = () => {
+    // Check if we're in a secure context (HTTPS or localhost)
+    const isSecureContext = window.isSecureContext || window.location.protocol === 'https:' || window.location.hostname === 'localhost'
+
+    if (!isSecureContext) {
+      console.warn('Geolocation requires HTTPS')
+      setUserLocation({ lat: 0, lng: 0 })
+      return
+    }
+
     if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
+      try {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const location = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            }
+            setUserLocation(location)
+            console.log('📍 User location for feed:', location)
+          },
+          (error) => {
+            console.warn('Geolocation error:', error.message)
+            let errorMessage = 'Could not get location. '
+
+            switch(error.code) {
+              case error.PERMISSION_DENIED:
+                errorMessage += 'Please enable location permissions in your browser.'
+                break
+              case error.POSITION_UNAVAILABLE:
+                errorMessage += 'Location information unavailable.'
+                break
+              case error.TIMEOUT:
+                errorMessage += 'Location request timed out.'
+                break
+              default:
+                errorMessage += 'Unknown error occurred.'
+            }
+
+            // Use default location (0, 0) if error occurs
+            setUserLocation({ lat: 0, lng: 0 })
+            // Don't show toast, just silently fall back
+          },
+          {
+            enableHighAccuracy: false,
+            timeout: 10000,
+            maximumAge: 300000,
           }
-          setUserLocation(location)
-          console.log('📍 User location for feed:', location)
-        },
-        (error) => {
-          console.error('Error getting location:', error)
-          // Use default location (0, 0) if user denies
-          setUserLocation({ lat: 0, lng: 0 })
-          setToast({
-            message: 'Location access denied. Showing all echoes.',
-            type: 'error'
-          })
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: 60000, // Cache for 1 minute
-        }
-      )
+        )
+      } catch (err) {
+        console.warn('Geolocation exception:', err)
+        setUserLocation({ lat: 0, lng: 0 })
+      }
     } else {
-      console.error('Geolocation not supported')
+      console.warn('Geolocation not supported')
       setUserLocation({ lat: 0, lng: 0 })
     }
   }
@@ -82,9 +128,24 @@ export default function FeedPage() {
     }
   }
 
-  // Combine new echos with existing echos
+  // Combine new echos with existing echos, removing duplicates
   const allEchos = useMemo(() => {
-    const combined = [...newEchos, ...echos]
+    // Create a Map to store unique echoes by ID
+    const uniqueEchosMap = new Map()
+
+    // Add new echoes first (they take priority)
+    newEchos.forEach(echo => {
+      uniqueEchosMap.set(echo.id, echo)
+    })
+
+    // Add fetched echoes (won't override if already exists)
+    echos.forEach(echo => {
+      if (!uniqueEchosMap.has(echo.id)) {
+        uniqueEchosMap.set(echo.id, echo)
+      }
+    })
+
+    const combined = Array.from(uniqueEchosMap.values())
     console.log('🔍 DEBUG: All echoes to render:', combined)
     console.log('🔍 DEBUG: Total echoes count:', combined.length)
     console.log('🔍 DEBUG: Echo IDs:', combined.map(e => e.id))
@@ -125,18 +186,50 @@ export default function FeedPage() {
     setActiveConfirmationId(null)
   }
 
+  const handleRefreshFeed = () => {
+    getUserLocation()
+    loadEchoes()
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 pb-20">
-        <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-          <div className="max-w-md mx-auto px-4 py-4">
-            <h1 className="text-2xl font-bold text-gray-900">Echo</h1>
+      <div className="min-h-screen bg-black pb-20">
+        <header className="bg-black border-b border-gray-800 sticky top-0 z-10">
+          <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+            {/* Profile Picture */}
+            <Link href="/profile" className="flex-shrink-0">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Profile"
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600" />
+              )}
+            </Link>
+
+            {/* Near You Button */}
+            <button
+              onClick={handleRefreshFeed}
+              className="px-6 py-3 rounded-full text-black font-semibold text-base font-[family-name:var(--font-roboto)]"
+              style={{
+                width: '179px',
+                height: '50px',
+                background: 'linear-gradient(87deg, #F8E880 32.94%, #FBF2B7 94.43%)'
+              }}
+            >
+              Near You
+            </button>
+
+            {/* Empty spacer to maintain layout balance */}
+            <div className="w-10 flex-shrink-0"></div>
           </div>
         </header>
         <div className="flex items-center justify-center py-16">
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading echoes...</p>
+            <p className="text-white">Loading echoes...</p>
           </div>
         </div>
         <Navbar />
@@ -146,27 +239,58 @@ export default function FeedPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 pb-20">
+      <div className="min-h-screen bg-black pb-20">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-          <div className="max-w-md mx-auto px-4 py-4">
-            <h1 className="text-2xl font-bold text-gray-900">Echo</h1>
+        <header className="bg-black border-b border-gray-800 sticky top-0 z-10">
+          <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+            {/* Profile Picture */}
+            <Link href="/profile" className="flex-shrink-0">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Profile"
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600" />
+              )}
+            </Link>
+
+            {/* Near You Button */}
+            <button
+              onClick={handleRefreshFeed}
+              className="px-6 py-3 rounded-full text-black font-semibold text-base font-[family-name:var(--font-roboto)]"
+              style={{
+                width: '179px',
+                height: '50px',
+                background: 'linear-gradient(87deg, #F8E880 32.94%, #FBF2B7 94.43%)'
+              }}
+            >
+              Near You
+            </button>
+
+            {/* Empty spacer to maintain layout balance */}
+            <div className="w-10 flex-shrink-0"></div>
           </div>
         </header>
 
         {/* Re-echo Limit Notice */}
-        <div className="max-w-md mx-auto px-4 py-3 bg-white border-b border-gray-200">
-          <p className="text-sm text-gray-600 text-center">
-            You only have 5 🔁 left this month!
+        <div className="max-w-md mx-auto px-4 py-3 bg-black border-b border-gray-800">
+          <p className="text-sm text-white text-center flex items-center justify-center gap-1">
+            You only have 5
+            <span className="inline-block" style={{ width: '20.859px', height: '16px' }}>
+              🔁
+            </span>
+            left this month!
           </p>
         </div>
 
         {/* Echo List */}
-        <main className="max-w-md mx-auto bg-white">
+        <main className="max-w-md mx-auto bg-black">
           {allEchos.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 px-4">
               <svg
-                className="w-16 h-16 text-gray-300 mb-4"
+                className="w-16 h-16 text-gray-600 mb-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -178,8 +302,8 @@ export default function FeedPage() {
                   d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
                 />
               </svg>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">No Echoes Yet</h2>
-              <p className="text-gray-500 text-center">
+              <h2 className="text-lg font-semibold text-white mb-2">No Echoes Yet</h2>
+              <p className="text-gray-400 text-center">
                 Be the first to create an echo in your area!
               </p>
             </div>

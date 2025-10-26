@@ -38,7 +38,7 @@ export default function EchoCard({
 }: EchoCardProps) {
   return (
     <Link href={`/echo/${echo.id}`}>
-      <div className="bg-white border-b border-gray-200 px-4 py-3 hover:bg-gray-50 transition-colors">
+      <div className="bg-black border-b border-gray-800 px-4 py-3 hover:bg-gray-900 transition-colors">
         <div className="flex gap-3 items-start">
           {/* Avatar */}
           {echo.avatarUrl ? (
@@ -56,12 +56,12 @@ export default function EchoCard({
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-base font-semibold text-gray-900 mb-0.5 line-clamp-1">
+            <h3 className="text-base font-semibold text-white mb-0.5 line-clamp-1">
               {echo.title}
             </h3>
-            <p className="text-sm text-gray-500 mb-2">@{echo.username}</p>
+            <p className="text-sm text-gray-400 mb-2">@{echo.username}</p>
 
-            <div className="flex items-center gap-3 text-sm text-gray-600">
+            <div className="flex items-center gap-3 text-sm text-gray-400">
               {/* Distance */}
               <div className="flex items-center gap-1">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -112,7 +112,7 @@ export default function EchoCard({
           {/* Flag icon on the right */}
           <div className="flex-shrink-0">
             <button
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+              className="p-2 text-gray-600 hover:text-gray-400 transition-colors"
               aria-label="Flag"
               onClick={(e) => {
                 e.preventDefault();
