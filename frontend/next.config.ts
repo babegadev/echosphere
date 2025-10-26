@@ -5,10 +5,11 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
 
   // Required headers for FFmpeg.wasm (SharedArrayBuffer support)
+  // Only apply to specific routes that need FFmpeg (create-echo page)
   async headers() {
     return [
       {
-        source: '/:path*',
+        source: '/create-echo',
         headers: [
           {
             key: 'Cross-Origin-Opener-Policy',
@@ -16,7 +17,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Cross-Origin-Embedder-Policy',
-            value: 'require-corp',
+            value: 'credentialless',
           },
         ],
       },

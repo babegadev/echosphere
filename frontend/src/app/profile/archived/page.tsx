@@ -72,6 +72,7 @@ export default function ArchivedEchosPage() {
       transcript: '',
       hasReEchoed: false,
       createdAt: new Date().toISOString(),
+      duration: archivedEcho.duration || 0,
     }
 
     // Add to feed immediately
