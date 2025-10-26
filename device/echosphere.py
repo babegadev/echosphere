@@ -101,10 +101,41 @@ class TriggerRecorder:
         duration = len(pcm_data) / (16000 * 2)
         print(f"💾 Saved WAV: {filename} ({duration:.1f}s)")
         return int(duration), filename
-    
+
+    def convert_wav_to_mp3(self, wav_filename, mp3_filename):
+        """Convert WAV file to MP3, returns True on success, False on failure"""
+        try:
+            from pydub import AudioSegment
+
+            # Load WAV file
+            audio = AudioSegment.from_wav(wav_filename)
+
+            # Export as MP3
+            audio.export(mp3_filename, format="mp3", bitrate="128k")
+            return True
+
+        except ImportError:
+            print("⚠️  pydub not installed. Cannot convert WAV to MP3.")
+            return False
+        except Exception as e:
+            print(f"❌ Error converting WAV to MP3: {e}")
+            return False
+
     def upload_to_ecosphere(self, filename, duration):
         """Upload audio to Supabase storage and create database record"""
         try:
+            # Convert WAV to MP3 if needed
+            if filename.endswith('.wav'):
+                print(f"🔄 Converting WAV to MP3...")
+                mp3_filename = filename.replace('.wav', '.mp3')
+                if self.convert_wav_to_mp3(filename, mp3_filename):
+                    # Remove the WAV file after successful conversion
+                    os.remove(filename)
+                    filename = mp3_filename
+                    print(f"✅ Converted to MP3: {mp3_filename}")
+                else:
+                    print(f"⚠️  Failed to convert WAV to MP3, uploading WAV file...")
+
             # 1. Upload file to Supabase Storage
             print(f"☁️  Uploading {filename} to Supabase...")
 
@@ -116,14 +147,14 @@ class TriggerRecorder:
 
             with open(filename, 'rb') as f:
                 storage_path = f"{self.user_id}/{basename}"
-                response = self.supabase.storage.from_('echoes').upload(
+                response = self.supabase.storage.from_('echo-audio').upload(
                     storage_path,
                     f.read(),
                     file_options={"content-type": content_type}
                 )
 
             # 2. Get public URL
-            audio_url = self.supabase.storage.from_('echoes').get_public_url(storage_path)
+            audio_url = self.supabase.storage.from_('echo-audio').get_public_url(storage_path)
             print(f"✅ Uploaded to: {audio_url}")
 
             # 3. Create database record
