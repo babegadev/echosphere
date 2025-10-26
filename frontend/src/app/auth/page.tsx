@@ -70,31 +70,31 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 px-4 py-8">
+    <div className="min-h-screen flex items-center justify-center bg-black px-4 py-8">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Echosphere</h1>
-          <p className="text-gray-600">Share your voice with the world</p>
+          <h1 className="text-4xl font-bold text-white mb-2">Echosphere</h1>
+          <p className="text-gray-400">Share your voice with the world</p>
         </div>
 
         <Tabs defaultValue="login" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Login</TabsTrigger>
-            <TabsTrigger value="signup">Sign Up</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 bg-gray-900 border border-gray-800">
+            <TabsTrigger value="login" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">Login</TabsTrigger>
+            <TabsTrigger value="signup" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">Sign Up</TabsTrigger>
           </TabsList>
 
           <TabsContent value="login">
-            <Card>
+            <Card className="bg-gray-900 border-gray-800">
               <CardHeader>
-                <CardTitle>Welcome back</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-white">Welcome back</CardTitle>
+                <CardDescription className="text-gray-400">
                   Enter your credentials to access your account
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
+                    <Label htmlFor="login-email" className="text-gray-300">Email</Label>
                     <Input
                       id="login-email"
                       type="email"
@@ -103,10 +103,11 @@ export default function AuthPage() {
                       onChange={(e) => setLoginEmail(e.target.value)}
                       required
                       disabled={loading}
+                      className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-yellow-500 focus:ring-yellow-500"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="login-password">Password</Label>
+                    <Label htmlFor="login-password" className="text-gray-300">Password</Label>
                     <Input
                       id="login-password"
                       type="password"
@@ -116,9 +117,15 @@ export default function AuthPage() {
                       required
                       disabled={loading}
                       minLength={6}
+                      className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-yellow-500 focus:ring-yellow-500"
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button
+                    type="submit"
+                    className="w-full text-black font-medium hover:opacity-90 transition-opacity"
+                    disabled={loading}
+                    style={{ background: 'linear-gradient(87deg, #F8E880 32.94%, #FBF2B7 94.43%)' }}
+                  >
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -134,17 +141,17 @@ export default function AuthPage() {
           </TabsContent>
 
           <TabsContent value="signup">
-            <Card>
+            <Card className="bg-gray-900 border-gray-800">
               <CardHeader>
-                <CardTitle>Create an account</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-white">Create an account</CardTitle>
+                <CardDescription className="text-gray-400">
                   Join the echosphere community today
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSignup} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-username">Username</Label>
+                    <Label htmlFor="signup-username" className="text-gray-300">Username</Label>
                     <Input
                       id="signup-username"
                       type="text"
@@ -153,10 +160,11 @@ export default function AuthPage() {
                       onChange={(e) => setSignupUsername(e.target.value)}
                       required
                       disabled={loading}
+                      className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-yellow-500 focus:ring-yellow-500"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
+                    <Label htmlFor="signup-email" className="text-gray-300">Email</Label>
                     <Input
                       id="signup-email"
                       type="email"
@@ -165,10 +173,11 @@ export default function AuthPage() {
                       onChange={(e) => setSignupEmail(e.target.value)}
                       required
                       disabled={loading}
+                      className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-yellow-500 focus:ring-yellow-500"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
+                    <Label htmlFor="signup-password" className="text-gray-300">Password</Label>
                     <Input
                       id="signup-password"
                       type="password"
@@ -178,12 +187,18 @@ export default function AuthPage() {
                       required
                       disabled={loading}
                       minLength={6}
+                      className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-yellow-500 focus:ring-yellow-500"
                     />
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-gray-500">
                       Password must be at least 6 characters
                     </p>
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button
+                    type="submit"
+                    className="w-full text-black font-medium hover:opacity-90 transition-opacity"
+                    disabled={loading}
+                    style={{ background: 'linear-gradient(87deg, #F8E880 32.94%, #FBF2B7 94.43%)' }}
+                  >
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
