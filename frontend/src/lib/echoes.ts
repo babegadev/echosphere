@@ -35,9 +35,44 @@ interface DBEcho {
 }
 
 // Get a single echo by ID
-export async function getEchoById(echoId: string): Promise<Echo | null> {
+export async function getEchoById(
+  echoId: string,
+  userLocation?: { lat: number; lng: number }
+): Promise<Echo | null> {
   const supabase = createClient()
 
+  console.log('🔍 getEchoById called with:', { echoId, userLocation })
+
+  // If user location is provided, use RPC to get distance
+  if (userLocation && userLocation.lat !== 0 && userLocation.lng !== 0) {
+    console.log('📍 Fetching echo with distance calculation...')
+    const { data, error } = await supabase.rpc('get_nearby_echoes', {
+      radius_meters: 999999999, // Very large radius to ensure we get this specific echo
+      user_lat: userLocation.lat,
+      user_lng: userLocation.lng,
+    })
+
+    if (error) {
+      console.error('Error fetching echo with distance:', error)
+      return null
+    }
+
+    console.log('📊 RPC returned echoes:', data?.length, 'echoes')
+
+    // Find the specific echo by ID
+    const echoData = (data as any[])?.find((e: any) => e.id === echoId)
+    if (!echoData) {
+      console.error('Echo not found in RPC results')
+      return null
+    }
+
+    console.log('✅ Found echo with distance_meters:', echoData.distance_meters)
+    return mapDBEchoToEcho(echoData)
+  }
+
+  console.log('⚠️ No location provided, fetching without distance')
+
+  // Fallback: Get echo without distance calculation
   const { data, error } = await supabase
     .from('echoes')
     .select(`
@@ -214,6 +249,7 @@ export async function reEcho(
     : 'POINT(0 0)'
 
   // Insert into re_echoes table
+  // Database trigger will automatically increment re_echo_count
   const { error: reEchoError } = await supabase.from('re_echoes').insert({
     original_echo_id: originalEchoId,
     user_id: userId,
@@ -224,16 +260,6 @@ export async function reEcho(
   if (reEchoError) {
     console.error('Error creating re-echo:', reEchoError)
     return false
-  }
-
-  // Increment the re_echo_count on the original echo
-  const { error: updateError } = await supabase.rpc('increment_re_echo_count', {
-    echo_id: originalEchoId,
-  })
-
-  if (updateError) {
-    console.error('Error incrementing re-echo count:', updateError)
-    // Still return true since the re-echo was created
   }
 
   return true
@@ -248,6 +274,7 @@ export async function recordListen(
   const supabase = createClient()
 
   // Insert listen record
+  // Database trigger will automatically increment listen_count
   const { error: listenError } = await supabase.from('listens').insert({
     echo_id: echoId,
     user_id: userId,
@@ -256,15 +283,6 @@ export async function recordListen(
 
   if (listenError) {
     console.error('Error recording listen:', listenError)
-  }
-
-  // Increment listen count on echo
-  const { error: updateError } = await supabase.rpc('increment_listen_count', {
-    echo_id: echoId,
-  })
-
-  if (updateError) {
-    console.error('Error incrementing listen count:', updateError)
   }
 }
 
